@@ -26,6 +26,12 @@ input,select{width:100%;padding:11px;border:1px solid #dce4dc;border-radius:9px;
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf0ec;font-size:14px}th{color:#7b877e;font-size:12px}
 .amount{text-align:right;white-space:nowrap}.delete{padding:7px 10px}.empty{text-align:center;padding:30px;color:#89948c}
 .hint{font-size:12px;color:#87928a;margin:10px 0 0}
+
+.account{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
+.account span{font-size:12px;color:#68766d}
+.account button{border:0;border-radius:9px;padding:9px 12px;background:#315943;color:white;font:inherit;font-weight:700;cursor:pointer}
+.account button.secondary{background:#edf3ee;color:#315943}
+.account button[hidden]{display:none}
 @media(max-width:620px){.wrap{padding:22px 14px 40px}header{align-items:flex-start;flex-direction:column}.cards{gap:7px}.card{padding:13px 10px}.card strong{font-size:19px}form{grid-template-columns:1fr}.wide{grid-column:auto}table th:nth-child(4),table td:nth-child(4){display:none}th,td{padding:10px 5px;font-size:12px}}
 </style>
 </head>
@@ -34,6 +40,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 <header>
   <div><h1>記帳日常</h1><p>簡單記下每一筆收支</p></div>
   <div class="month"><button id="prev" aria-label="上個月">‹</button><span id="monthLabel"></span><button id="next" aria-label="下個月">›</button></div>
+  <div class="account"><span id="authStatus">尚未登入</span><button id="loginButton" type="button">Google 登入</button><button id="logoutButton" class="secondary" type="button" hidden>登出</button></div>
 </header>
 <div class="cards">
   <div class="card"><span>本月收入</span><strong class="income" id="incomeTotal">0</strong></div>
@@ -146,6 +153,67 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   });
   updateCategories();
   render();
+})();
+</script>
+
+<script type="module">
+(async function(){
+  var status=document.getElementById("authStatus");
+  var loginButton=document.getElementById("loginButton");
+  var logoutButton=document.getElementById("logoutButton");
+  if(location.protocol==="file:"){
+    status.textContent="請以 HTTPS 網址或 localhost 開啟才能登入";
+  }
+  try{
+    var appSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js");
+    var authSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js");
+    var app=appSdk.initializeApp({
+      apiKey:"AIzaSyCuJX2I9H4Qllp8T9ct1M38XLh-DwXzRVw",
+      authDomain:"moneycount-168.firebaseapp.com",
+      projectId:"moneycount-168",
+      storageBucket:"moneycount-168.firebasestorage.app",
+      messagingSenderId:"1016513864050",
+      appId:"1:1016513864050:web:ea40c8c9dd90cdd903bdeb"
+    });
+    var authInstance=authSdk.getAuth(app);
+    var provider=new authSdk.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:"select_account"});
+    authSdk.onAuthStateChanged(authInstance,function(user){
+      if(user){
+        status.textContent=user.displayName||user.email||"已登入";
+        loginButton.hidden=true;
+        logoutButton.hidden=false;
+      }else{
+        status.textContent=location.protocol==="file:"?"請以 HTTPS 網址或 localhost 開啟才能登入":"尚未登入";
+        loginButton.hidden=false;
+        logoutButton.hidden=true;
+      }
+    });
+    loginButton.addEventListener("click",async function(){
+      if(location.protocol==="file:"){
+        status.textContent="請改用 GitHub Pages 網址，或透過 localhost 開啟。";
+        return;
+      }
+      loginButton.disabled=true;
+      try{await authSdk.signInWithPopup(authInstance,provider);}
+      catch(error){
+        var messages={
+          "auth/unauthorized-domain":"Firebase 尚未授權這個網域，請在 Authentication → Settings → Authorized domains 加入目前網域。",
+          "auth/operation-not-allowed":"Firebase 尚未啟用 Google 登入，請在 Authentication → Sign-in method 開啟 Google。",
+          "auth/popup-blocked":"登入視窗遭封鎖，請允許彈出視窗後再試。",
+          "auth/network-request-failed":"連線失敗，請檢查網路後再試。"
+        };
+        status.textContent=messages[error.code]||("登入失敗："+(error.code||error.message||"未知錯誤"));
+      }finally{loginButton.disabled=false;}
+    });
+    logoutButton.addEventListener("click",async function(){
+      try{await authSdk.signOut(authInstance);}
+      catch(error){status.textContent="登出失敗："+(error.code||"未知錯誤");}
+    });
+  }catch(error){
+    status.textContent=location.protocol==="file:"?"此檔案可記帳；Google 登入請改用 HTTPS 網址或 localhost。":"Firebase 載入失敗，請檢查網路或 SDK 連線。";
+    console.error("Firebase Auth initialization failed",error);
+  }
 })();
 </script>
 </body>
