@@ -74,6 +74,8 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   var selectedMonth=new Date(); selectedMonth.setDate(1);
   var categoryMap={expense:["飲食","交通","生活","購物","娛樂","其他"],income:["薪水","獎金","禮金","其他"]};
   var entries=readEntries();
+  window.moneycountGetEntries=function(){return entries.slice();};
+  window.moneycountApplyCloudEntries=function(items){entries=items;saveEntries();render();};
 
   function readEntries(){
     try { var saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]"); return Array.isArray(saved)?saved:[]; }
@@ -129,16 +131,18 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     var message=document.getElementById("message");
     message.textContent="";
     if(!Number.isSafeInteger(amount)||amount<=0){message.textContent="請輸入大於 0 的整數金額。";return;}
-    entries.push({
+    var entry={
       id:Date.now()+Math.floor(Math.random()*1000),
       kind:document.getElementById("kind").value,
       amount:amount,
       category:document.getElementById("category").value,
       date:document.getElementById("entryDate").value,
       note:document.getElementById("note").value.trim()
-    });
+    };
+    entries.push(entry);
     try { saveEntries(); }
     catch(error){entries.pop();message.textContent="瀏覽器無法保存資料，請檢查儲存空間設定。";return;}
+    if(window.moneycountSyncSave)window.moneycountSyncSave(entry);
     this.reset();
     document.getElementById("entryDate").value=localDate();
     updateCategories();
@@ -149,6 +153,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     if(!id)return;
     entries=entries.filter(function(item){return item.id!==id;});
     saveEntries();
+    if(window.moneycountSyncDelete)window.moneycountSyncDelete(id);
     render();
   });
   updateCategories();
@@ -167,6 +172,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   try{
     var appSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js");
     var authSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js");
+    var firestoreSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js");
     var app=appSdk.initializeApp({
       apiKey:"AIzaSyCuJX2I9H4Qllp8T9ct1M38XLh-DwXzRVw",
       authDomain:"moneycount-168.firebaseapp.com",
@@ -178,12 +184,78 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     var authInstance=authSdk.getAuth(app);
     var provider=new authSdk.GoogleAuthProvider();
     provider.setCustomParameters({prompt:"select_account"});
+    var db=firestoreSdk.getFirestore(app);
+    var activeUid=null;
+    var stopListening=null;
+    var syncRun=0;
+    function stopCloudSync(){
+      syncRun++;
+      activeUid=null;
+      if(stopListening){stopListening();stopListening=null;}
+    }
+    async function startCloudSync(user){
+      stopCloudSync();
+      var thisRun=syncRun;
+      activeUid=user.uid;
+      status.textContent="正在連接記帳資料…";
+      var entriesRef=firestoreSdk.collection(db,"users",user.uid,"entries");
+      try{
+        var remote=await firestoreSdk.getDocs(entriesRef);
+        if(thisRun!==syncRun)return;
+        var owner=localStorage.getItem("moneycount_cloud_owner");
+        var migrationKey="moneycount_migrated_"+user.uid;
+        var mayImport=!localStorage.getItem(migrationKey)&&(!owner||owner===user.uid);
+        if(mayImport){
+          var localEntries=window.moneycountGetEntries?window.moneycountGetEntries():[];
+          var remoteIds=new Set(remote.docs.map(function(item){return item.id;}));
+          var missing=localEntries.filter(function(item){return !remoteIds.has(String(item.id));});
+          for(var i=0;i<missing.length;i+=450){
+            var batch=firestoreSdk.writeBatch(db);
+            missing.slice(i,i+450).forEach(function(item){
+              batch.set(firestoreSdk.doc(entriesRef,String(item.id)),item);
+            });
+            await batch.commit();
+          }
+          localStorage.setItem(migrationKey,"1");
+        }
+        localStorage.setItem("moneycount_cloud_owner",user.uid);
+        stopListening=firestoreSdk.onSnapshot(entriesRef,function(snapshot){
+          if(thisRun!==syncRun)return;
+          var cloudEntries=snapshot.docs.map(function(item){
+            var data=item.data();data.id=Number(item.id);return data;
+          }).filter(function(item){return Number.isSafeInteger(item.id);});
+          if(window.moneycountApplyCloudEntries)window.moneycountApplyCloudEntries(cloudEntries);
+          status.textContent=(user.displayName||user.email||"已登入")+" · 已同步";
+        },function(error){
+          status.textContent="同步失敗（"+(error.code||"未知錯誤")+"），本機記錄仍保留";
+        });
+      }catch(error){
+        status.textContent="雲端連線失敗（"+(error.code||"未知錯誤")+"），請確認 Firestore 與 Rules 設定";
+      }
+    }
+    window.moneycountSyncSave=async function(entry){
+      if(!activeUid)return;
+      try{
+        await firestoreSdk.setDoc(firestoreSdk.doc(db,"users",activeUid,"entries",String(entry.id)),entry);
+      }catch(error){
+        status.textContent="雲端儲存失敗（"+(error.code||"未知錯誤")+"），本機記錄仍保留";
+      }
+    };
+    window.moneycountSyncDelete=async function(id){
+      if(!activeUid)return;
+      try{
+        await firestoreSdk.deleteDoc(firestoreSdk.doc(db,"users",activeUid,"entries",String(id)));
+      }catch(error){
+        status.textContent="雲端刪除失敗（"+(error.code||"未知錯誤")+"）";
+      }
+    };
     authSdk.onAuthStateChanged(authInstance,function(user){
       if(user){
-        status.textContent=user.displayName||user.email||"已登入";
         loginButton.hidden=true;
         logoutButton.hidden=false;
+        startCloudSync(user);
       }else{
+        stopCloudSync();
         status.textContent=location.protocol==="file:"?"請以 HTTPS 網址或 localhost 開啟才能登入":"尚未登入";
         loginButton.hidden=false;
         logoutButton.hidden=true;
