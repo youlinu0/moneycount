@@ -32,6 +32,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 .account button{border:0;border-radius:9px;padding:9px 12px;background:#315943;color:white;font:inherit;font-weight:700;cursor:pointer}
 .account button.secondary{background:#edf3ee;color:#315943}
 .account button[hidden]{display:none}
+.ai-panel{margin-top:16px}.ai-panel p{color:#728078;font-size:13px;line-height:1.6}.ai-messages{display:grid;gap:10px;max-height:340px;overflow:auto;margin:12px 0}.ai-message{max-width:90%;padding:11px 13px;border-radius:13px;background:#f1f5f1;white-space:pre-wrap;line-height:1.55}.ai-message.user{justify-self:end;background:#315943;color:white}.ai-form{display:grid;grid-template-columns:1fr auto;gap:9px}.ai-form button,.ai-confirm button{border:0;border-radius:9px;padding:10px 14px;background:#315943;color:white;font:inherit;font-weight:700;cursor:pointer}.ai-form button:disabled,.ai-confirm button:disabled{opacity:.55;cursor:wait}.ai-confirm{border:1px solid #dce4dc;border-radius:12px;padding:12px;margin-top:10px;background:#fbfcfa}.ai-confirm button.cancel{background:#edf3ee;color:#315943;margin-left:7px}.ai-status{min-height:20px;color:#bd6251;font-size:13px}
 @media(max-width:620px){.wrap{padding:22px 14px 40px}header{align-items:flex-start;flex-direction:column}.cards{gap:7px}.card{padding:13px 10px}.card strong{font-size:19px}form{grid-template-columns:1fr}.wide{grid-column:auto}table th:nth-child(4),table td:nth-child(4){display:none}th,td{padding:10px 5px;font-size:12px}}
 </style>
 </head>
@@ -66,6 +67,14 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     <table><thead><tr><th>日期</th><th>類型</th><th>分類</th><th>備註</th><th class="amount">金額</th><th></th></tr></thead><tbody id="rows"></tbody></table>
   </div>
 </section>
+<section class="ai-panel" aria-labelledby="aiTitle">
+  <h2 id="aiTitle">Gemini AI 小幫手</h2>
+  <p>可以詢問收支、整理月報，或用文字新增／修改記帳。送出時會將你的訊息與最近最多 300 筆記帳資料傳給 Google Gemini；任何變更都會先顯示預覽，按「確認套用」後才寫入。刪除也需要確認。</p>
+  <div id="aiMessages" class="ai-messages" aria-live="polite"><div class="ai-message">你好！例如：「這個月花最多在哪？」或「把 11/20 的午餐改成 150 元」。</div></div>
+  <form id="aiForm" class="ai-form"><input id="aiInput" maxlength="500" autocomplete="off" placeholder="輸入問題或記帳修改指示…"><button id="aiSend" type="submit">送出</button></form>
+  <div id="aiStatus" class="ai-status" role="status"></div>
+  <div id="aiProposal" class="ai-confirm" hidden></div>
+</section>
 </main>
 <script>
 (function(){
@@ -76,6 +85,29 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   var entries=readEntries();
   window.moneycountGetEntries=function(){return entries.slice();};
   window.moneycountApplyCloudEntries=function(items){entries=items;saveEntries();render();};
+  window.moneycountApplyAiChange=function(change){
+    var current,updated;
+    if(change.type==="add"){
+      updated={id:Date.now()+Math.floor(Math.random()*1000),kind:change.entry.kind,amount:change.entry.amount,category:change.entry.category,date:change.entry.date,note:change.entry.note||""};
+      entries.push(updated);
+      try{saveEntries();}catch(error){entries.pop();throw error;}
+      if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
+    }else if(change.type==="update"){
+      current=entries.find(function(item){return Number(item.id)===Number(change.id);});
+      if(!current)throw new Error("找不到要修改的那筆記錄，請重新詢問。");
+      updated={id:current.id,kind:change.entry.kind,amount:change.entry.amount,category:change.entry.category,date:change.entry.date,note:change.entry.note||""};
+      var index=entries.indexOf(current);entries[index]=updated;
+      try{saveEntries();}catch(error){entries[index]=current;throw error;}
+      if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
+    }else if(change.type==="delete"){
+      current=entries.find(function(item){return Number(item.id)===Number(change.id);});
+      if(!current)throw new Error("找不到要刪除的那筆記錄，請重新詢問。");
+      entries=entries.filter(function(item){return Number(item.id)!==Number(change.id);});
+      try{saveEntries();}catch(error){entries.push(current);throw error;}
+      if(window.moneycountSyncDelete)window.moneycountSyncDelete(current.id);
+    }else{throw new Error("這種變更目前不支援。");}
+    render();return updated||current;
+  };
 
   function readEntries(){
     try { var saved=JSON.parse(localStorage.getItem(STORAGE_KEY)||"[]"); return Array.isArray(saved)?saved:[]; }
@@ -166,6 +198,18 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   var status=document.getElementById("authStatus");
   var loginButton=document.getElementById("loginButton");
   var logoutButton=document.getElementById("logoutButton");
+  var aiStatus=document.getElementById("aiStatus");
+  var aiForm=document.getElementById("aiForm");
+  var aiInput=document.getElementById("aiInput");
+  var aiSend=document.getElementById("aiSend");
+  var aiMessages=document.getElementById("aiMessages");
+  var aiProposal=document.getElementById("aiProposal");
+  var aiHistory=[];
+  var aiUid=null;
+  var pendingAiChange=null;
+  var aiModel=null;
+  // Fill this with the public reCAPTCHA Enterprise site key registered for this Web App in Firebase App Check.
+  var RECAPTCHA_ENTERPRISE_SITE_KEY="";
   if(location.protocol==="file:"){
     status.textContent="請以 HTTPS 網址或 localhost 開啟才能登入";
   }
@@ -173,6 +217,8 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     var appSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js");
     var authSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js");
     var firestoreSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js");
+    var appCheckSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-app-check.js");
+    var aiSdk=await import("https://www.gstatic.com/firebasejs/13.4.0/firebase-ai.js");
     var app=appSdk.initializeApp({
       apiKey:"AIzaSyCuJX2I9H4Qllp8T9ct1M38XLh-DwXzRVw",
       authDomain:"moneycount-168.firebaseapp.com",
@@ -180,6 +226,90 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       storageBucket:"moneycount-168.firebasestorage.app",
       messagingSenderId:"1016513864050",
       appId:"1:1016513864050:web:ea40c8c9dd90cdd903bdeb"
+    });
+    var appCheckReady=false;
+    try{
+      if(RECAPTCHA_ENTERPRISE_SITE_KEY){
+        appCheckSdk.initializeAppCheck(app,{
+          provider:new appCheckSdk.ReCaptchaEnterpriseProvider(RECAPTCHA_ENTERPRISE_SITE_KEY),
+          isTokenAutoRefreshEnabled:true
+        });
+        appCheckReady=true;
+        var ai=aiSdk.getAI(app,{backend:new aiSdk.GoogleAIBackend(),useLimitedUseAppCheckTokens:true});
+        aiModel=aiSdk.getGenerativeModel(ai,{
+          model:"gemini-3.8-flash",
+          generationConfig:{responseMimeType:"application/json"}
+        });
+      }else{
+        aiStatus.textContent="Gemini 尚未啟用：請先在 Firebase AI Logic 啟用 Gemini，並完成 App Check 網站金鑰設定。";
+      }
+    }catch(aiSetupError){
+      aiStatus.textContent="Gemini 設定失敗：請確認 App Check 網站金鑰已註冊正確。";
+      console.error("Firebase AI Logic setup failed",aiSetupError);
+    }
+    function addAiMessage(text,role){
+      var bubble=document.createElement("div");bubble.className="ai-message"+(role==="user"?" user":"");bubble.textContent=text;
+      aiMessages.appendChild(bubble);aiMessages.scrollTop=aiMessages.scrollHeight;
+    }
+    function validAiEntry(item){
+      return item&&["income","expense"].indexOf(item.kind)>=0&&Number.isSafeInteger(Number(item.amount))&&Number(item.amount)>0&&
+        (item.kind==="income"?["薪水","獎金","禮金","其他"]:["飲食","交通","生活","購物","娛樂","其他"]).indexOf(item.category)>=0&&
+        /^\d{4}-\d{2}-\d{2}$/.test(item.date)&&!Number.isNaN(Date.parse(item.date+"T00:00:00"))&&String(item.note||"").length<=120;
+    }
+    function showAiProposal(change){
+      pendingAiChange=change;aiProposal.replaceChildren();aiProposal.hidden=false;
+      var heading=document.createElement("strong");heading.textContent=change.type==="add"?"新增記錄預覽":change.type==="update"?"修改記錄預覽":"刪除記錄預覽";aiProposal.appendChild(heading);
+      var detail=document.createElement("p");
+      if(change.type==="delete"){
+        var old=window.moneycountGetEntries().find(function(item){return Number(item.id)===Number(change.id);});
+        detail.textContent=old?old.date+" · "+(old.kind==="income"?"收入":"支出")+" · "+old.category+" · "+old.amount+" · "+(old.note||"無備註"):"找不到原記錄";
+      }else{
+        var item=change.entry;
+        detail.textContent=item.date+" · "+(item.kind==="income"?"收入":"支出")+" · "+item.category+" · "+item.amount+" · "+(item.note||"無備註");
+      }
+      aiProposal.appendChild(detail);
+      var apply=document.createElement("button");apply.type="button";apply.textContent="確認套用";
+      apply.addEventListener("click",function(){
+        if(!pendingAiChange)return;
+        try{window.moneycountApplyAiChange(pendingAiChange);addAiMessage("已依照你的確認更新記帳資料。","model");aiProposal.hidden=true;pendingAiChange=null;aiStatus.textContent="已同步至你的帳戶。";}
+        catch(error){aiStatus.textContent=error.message||"套用失敗，請再試一次。";}
+      });
+      var cancel=document.createElement("button");cancel.type="button";cancel.className="cancel";cancel.textContent="取消";
+      cancel.addEventListener("click",function(){pendingAiChange=null;aiProposal.hidden=true;aiStatus.textContent="已取消，沒有修改資料。";});
+      var buttons=document.createElement("div");buttons.append(apply,cancel);aiProposal.appendChild(buttons);
+    }
+    aiForm.addEventListener("submit",async function(event){
+      event.preventDefault();var question=aiInput.value.trim();if(!question)return;
+      if(!authInstance.currentUser){aiStatus.textContent="請先使用 Google 登入，Gemini 才能查看你的記帳內容。";return;}
+      if(!aiModel||!appCheckReady){aiStatus.textContent="Gemini 尚未完成 Firebase AI Logic / App Check 設定。";return;}
+      if(pendingAiChange){aiStatus.textContent="請先確認或取消目前的變更預覽。";return;}
+      addAiMessage(question,"user");aiInput.value="";aiSend.disabled=true;aiStatus.textContent="Gemini 正在整理…";
+      try{
+        var ledger=(window.moneycountGetEntries?window.moneycountGetEntries():[]).slice(-300);
+        var prompt=[
+          "你是記帳日常的繁體中文財務記帳助理。只能根據 ledger 回答，不可捏造資料。使用者要求修改或刪除時，只提出單一明確操作；若目標不唯一或資訊不足，action.type 設為 none，並在 message 詢問澄清。不要直接宣稱已修改。",
+          "請只回傳 JSON，不要 Markdown，格式：{\"message\":\"給使用者的繁體中文回覆\",\"action\":{\"type\":\"none|add|update|delete\",\"id\":null,\"entry\":null}}。",
+          "add/update 的 entry 必須含 kind(income/expense), amount(正整數), category, date(YYYY-MM-DD), note。update/delete 的 id 必須是 ledger 裡存在的 id。更新時請輸出完整的新 entry。分類只可選支出：飲食、交通、生活、購物、娛樂、其他；收入：薪水、獎金、禮金、其他。無法明確推斷日期、金額、種類、分類或目標時請 action.type=none 並詢問。",
+          "今天日期="+(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(),
+          "ledger="+JSON.stringify(ledger),
+          "最近對話="+JSON.stringify(aiHistory.slice(-8)),
+          "使用者訊息="+question
+        ].join("\n\n");
+        var result=await aiModel.generateContent(prompt);var payload=JSON.parse(result.response.text());
+        var message=String(payload.message||"我需要更多資訊才能協助你。");addAiMessage(message,"model");
+        if(payload.action&&payload.action.type==="add"&&validAiEntry(payload.action.entry))showAiProposal({type:"add",entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
+        else if(payload.action&&payload.action.type==="update"){
+          var target=ledger.find(function(item){return Number(item.id)===Number(payload.action.id);});
+          if(target&&validAiEntry(payload.action.entry))showAiProposal({type:"update",id:Number(target.id),entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
+          else if(payload.action.type!=="none")addAiMessage("我無法安全確認這筆記錄或內容，沒有提出修改。","model");
+        }else if(payload.action&&payload.action.type==="delete"){
+          var found=ledger.find(function(item){return Number(item.id)===Number(payload.action.id);});
+          if(found)showAiProposal({type:"delete",id:Number(found.id)});else addAiMessage("找不到要刪除的記錄，沒有提出變更。","model");
+        }else if(payload.action&&payload.action.type!=="none")addAiMessage("變更資料格式不完整，沒有提出變更。","model");
+        aiHistory.push({role:"user",text:question},{role:"assistant",text:message});aiHistory=aiHistory.slice(-8);aiStatus.textContent="";
+      }catch(error){
+        console.error("Gemini request failed",error);aiStatus.textContent="Gemini 回覆失敗："+(error.message||"請檢查 Firebase AI Logic、App Check 與網路設定。");
+      }finally{aiSend.disabled=false;}
     });
     var authInstance=authSdk.getAuth(app);
     var provider=new authSdk.GoogleAuthProvider();
@@ -250,6 +380,11 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       }
     };
     authSdk.onAuthStateChanged(authInstance,function(user){
+      var nextUid=user?user.uid:null;
+      if(nextUid!==aiUid){
+        aiUid=nextUid;aiHistory=[];pendingAiChange=null;aiProposal.hidden=true;
+        aiMessages.replaceChildren();addAiMessage(user?"已登入，可以詢問你的收支或提出記帳變更；送出時資料會傳給 Google Gemini。":"你好！登入後即可使用 Gemini 記帳小幫手。","model");
+      }
       if(user){
         loginButton.hidden=true;
         logoutButton.hidden=false;
