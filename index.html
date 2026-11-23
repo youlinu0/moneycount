@@ -25,6 +25,7 @@ input,select{width:100%;padding:11px;border:1px solid #dce4dc;border-radius:9px;
 #message{min-height:20px;color:#bd6251;font-size:13px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf0ec;font-size:14px}th{color:#7b877e;font-size:12px}
 .amount{text-align:right;white-space:nowrap}.delete{padding:7px 10px}.empty{text-align:center;padding:30px;color:#89948c}
+.row-edit-input{min-width:92px;padding:7px 8px;border:1px solid #dce4dc;border-radius:7px;font:inherit;font-size:13px}
 .hint{font-size:12px;color:#87928a;margin:10px 0 0}
 
 .account{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
@@ -82,6 +83,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   var STORAGE_KEY="moneycount_entries_v1";
   var selectedMonth=new Date(); selectedMonth.setDate(1);
   var categoryMap={expense:["飲食","交通","生活","購物","娛樂","其他"],income:["薪水","獎金","禮金","其他"]};
+  var editingId=null;
   var entries=readEntries();
   window.moneycountGetEntries=function(){return entries.slice();};
   window.moneycountApplyCloudEntries=function(items){entries=items;saveEntries();render();};
@@ -146,10 +148,20 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       return;
     }
     rows.innerHTML=visible.slice().sort(function(a,b){return b.date.localeCompare(a.date)||b.id-a.id;}).map(function(item){
+      if(editingId===Number(item.id)){
+        var kindOptions='<option value="expense"'+(item.kind==="expense"?" selected":"")+'">支出</option><option value="income"'+(item.kind==="income"?" selected":"")+'">收入</option>';
+        var categoryOptions=categoryMap[item.kind].map(function(name){return '<option value="'+escapeHtml(name)+'"'+(name===item.category?" selected":"")+'>'+escapeHtml(name)+'</option>';}).join("");
+        return "<tr data-edit-row='"+item.id+"'><td><input class='row-edit-input' data-field='date' type='date' value='"+escapeHtml(item.date)+"'></td>"+
+          "<td><select class='row-edit-input' data-field='kind'>"+kindOptions+"</select></td>"+
+          "<td><select class='row-edit-input' data-field='category'>"+categoryOptions+"</select></td>"+
+          "<td><input class='row-edit-input' data-field='note' maxlength='120' value='"+escapeHtml(item.note||"")+"' placeholder='備註'></td>"+
+          "<td><input class='row-edit-input amount' data-field='amount' type='number' min='1' step='1' value='"+escapeHtml(item.amount)+"'></td>"+
+          "<td><button class='delete' type='button' data-action='save' data-id='"+item.id+"'>儲存</button> <button class='delete' type='button' data-action='cancel' data-id='"+item.id+"'>取消</button></td></tr>";
+      }
       return "<tr><td>"+escapeHtml(item.date)+"</td><td>"+(item.kind==="income"?"收入":"支出")+"</td><td>"+
         escapeHtml(item.category)+"</td><td>"+escapeHtml(item.note||"—")+"</td><td class='amount "+
         (item.kind==="income"?"income":"expense")+"'>"+(item.kind==="income"?"+":"−")+formatMoney(item.amount)+
-        "</td><td><button class='delete' type='button' data-id='"+item.id+"'>刪除</button></td></tr>";
+        "</td><td><button class='delete' type='button' data-action='edit' data-id='"+item.id+"'>編輯</button> <button class='delete' type='button' data-action='delete' data-id='"+item.id+"'>刪除</button></td></tr>";
     }).join("");
   }
 
@@ -180,13 +192,39 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     updateCategories();
     render();
   });
+  document.getElementById("rows").addEventListener("change",function(event){
+    if(event.target.getAttribute("data-field")!=="kind")return;
+    var row=event.target.closest("tr"),category=row.querySelector("[data-field='category']"),kind=event.target.value;
+    category.innerHTML=categoryMap[kind].map(function(name){return "<option value='"+escapeHtml(name)+"'>"+escapeHtml(name)+"</option>";}).join("");
+  });
   document.getElementById("rows").addEventListener("click",function(event){
-    var id=Number(event.target.getAttribute("data-id"));
+    var button=event.target.closest("button[data-action]"),id,action,current,row,updated,date,amount,kind,category,note,index;
+    if(!button)return;
+    id=Number(button.getAttribute("data-id"));action=button.getAttribute("data-action");
     if(!id)return;
-    entries=entries.filter(function(item){return item.id!==id;});
-    saveEntries();
-    if(window.moneycountSyncDelete)window.moneycountSyncDelete(id);
-    render();
+    if(action==="edit"){editingId=id;render();return;}
+    if(action==="cancel"){editingId=null;render();return;}
+    current=entries.find(function(item){return Number(item.id)===id;});
+    if(!current)return;
+    if(action==="delete"){
+      entries=entries.filter(function(item){return Number(item.id)!==id;});
+      saveEntries();
+      if(window.moneycountSyncDelete)window.moneycountSyncDelete(id);
+      render();return;
+    }
+    if(action!=="save")return;
+    row=button.closest("tr");date=row.querySelector("[data-field='date']").value;
+    kind=row.querySelector("[data-field='kind']").value;category=row.querySelector("[data-field='category']").value;
+    amount=Number(row.querySelector("[data-field='amount']").value);note=row.querySelector("[data-field='note']").value.trim();
+    var message=document.getElementById("message");message.textContent="";
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+"T00:00:00"))||new Date(date+"T00:00:00").toISOString().slice(0,10)!==date){message.textContent="請填寫有效日期。";return;}
+    if(!Number.isSafeInteger(amount)||amount<=0){message.textContent="金額請填寫大於 0 的整數。";return;}
+    if(categoryMap[kind].indexOf(category)<0){message.textContent="請選擇有效分類。";return;}
+    updated={id:current.id,date:date,kind:kind,category:category,amount:amount,note:note};
+    index=entries.indexOf(current);entries[index]=updated;
+    try{saveEntries();}catch(error){entries[index]=current;message.textContent="儲存失敗，請檢查瀏覽器儲存空間。";return;}
+    if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
+    editingId=null;render();message.textContent="收支紀錄已更新。";
   });
   updateCategories();
   render();
