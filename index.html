@@ -208,6 +208,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   var aiUid=null;
   var pendingAiChange=null;
   var aiModel=null;
+  var aiFallbackModel=null;
   // Fill this with the public reCAPTCHA Enterprise site key registered for this Web App in Firebase App Check.
   var RECAPTCHA_ENTERPRISE_SITE_KEY="6LeJcC4uAAAAANg9fkOU60HvuW_RPP25M9E2-hum";
   if(location.protocol==="file:"){
@@ -238,6 +239,10 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
         var ai=aiSdk.getAI(app,{backend:new aiSdk.GoogleAIBackend(),useLimitedUseAppCheckTokens:true});
         aiModel=aiSdk.getGenerativeModel(ai,{
           model:"gemini-3.8-flash",
+          generationConfig:{responseMimeType:"application/json"}
+        });
+        aiFallbackModel=aiSdk.getGenerativeModel(ai,{
+          model:"gemini-3.5-flash-lite",
           generationConfig:{responseMimeType:"application/json"}
         });
       }else{
@@ -295,7 +300,15 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
           "最近對話="+JSON.stringify(aiHistory.slice(-8)),
           "使用者訊息="+question
         ].join("\n\n");
-        var result=await aiModel.generateContent(prompt);var payload=JSON.parse(result.response.text());
+        var result;
+        try{result=await aiModel.generateContent(prompt);}
+        catch(primaryError){
+          var primaryMessage=String(primaryError.message||primaryError);
+          if(!/high demand|temporarily unavailable|\[\s*500\s*\]|\[\s*503\s*\]|429/i.test(primaryMessage))throw primaryError;
+          aiStatus.textContent="Gemini 3.8 忙碌中，正在改用備援模型…";
+          result=await aiFallbackModel.generateContent(prompt);
+        }
+        var payload=JSON.parse(result.response.text());
         var message=String(payload.message||"我需要更多資訊才能協助你。");addAiMessage(message,"model");
         if(payload.action&&payload.action.type==="add"&&validAiEntry(payload.action.entry))showAiProposal({type:"add",entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
         else if(payload.action&&payload.action.type==="update"){
@@ -308,7 +321,9 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
         }else if(payload.action&&payload.action.type!=="none")addAiMessage("變更資料格式不完整，沒有提出變更。","model");
         aiHistory.push({role:"user",text:question},{role:"assistant",text:message});aiHistory=aiHistory.slice(-8);aiStatus.textContent="";
       }catch(error){
-        console.error("Gemini request failed",error);aiStatus.textContent="Gemini 回覆失敗："+(error.message||"請檢查 Firebase AI Logic、App Check 與網路設定。");
+        console.error("Gemini request failed",error);
+        var errorText=String(error.message||error);
+        aiStatus.textContent=/high demand|temporarily unavailable|\[\s*500\s*\]|\[\s*503\s*\]|429/i.test(errorText)?"Gemini 目前忙碌，暫時無法回覆。這次沒有修改帳本，請稍後重試。":"Gemini 回覆失敗，這次沒有修改帳本。請檢查網路或稍後再試。";
       }finally{aiSend.disabled=false;}
     });
     var authInstance=authSdk.getAuth(app);
