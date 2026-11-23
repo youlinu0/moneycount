@@ -209,6 +209,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   var pendingAiChange=null;
   var aiModel=null;
   var aiFallbackModel=null;
+  var aiEmergencyModel=null;
   // Fill this with the public reCAPTCHA Enterprise site key registered for this Web App in Firebase App Check.
   var RECAPTCHA_ENTERPRISE_SITE_KEY="6LeJcC4uAAAAANg9fkOU60HvuW_RPP25M9E2-hum";
   if(location.protocol==="file:"){
@@ -238,11 +239,15 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
         appCheckReady=true;
         var ai=aiSdk.getAI(app,{backend:new aiSdk.GoogleAIBackend(),useLimitedUseAppCheckTokens:true});
         aiModel=aiSdk.getGenerativeModel(ai,{
-          model:"gemini-3.8-flash",
+          model:"gemini-4-hydrogen",
           generationConfig:{responseMimeType:"application/json"}
         });
         aiFallbackModel=aiSdk.getGenerativeModel(ai,{
           model:"gemini-3.5-flash-lite",
+          generationConfig:{responseMimeType:"application/json"}
+        });
+        aiEmergencyModel=aiSdk.getGenerativeModel(ai,{
+          model:"gemini-3.8-flash",
           generationConfig:{responseMimeType:"application/json"}
         });
       }else{
@@ -255,6 +260,25 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     function addAiMessage(text,role){
       var bubble=document.createElement("div");bubble.className="ai-message"+(role==="user"?" user":"");bubble.textContent=text;
       aiMessages.appendChild(bubble);aiMessages.scrollTop=aiMessages.scrollHeight;
+    }
+    async function generateWithFallback(prompt){
+      var models=[
+        {model:aiModel,name:"Gemini 4 Hydrogen"},
+        {model:aiFallbackModel,name:"Gemini 3.5 Flash-Lite"},
+        {model:aiEmergencyModel,name:"Gemini 3.8 Flash"}
+      ];
+      var overloadPattern=/high demand|temporarily unavailable|\[\s*5\d\d\s*\]|\b429\b/i;
+      var lastError=null;
+      for(var i=0;i<models.length;i++){
+        if(!models[i].model)continue;
+        try{return await models[i].model.generateContent(prompt);}
+        catch(error){
+          lastError=error;
+          if(!overloadPattern.test(String(error.message||error))||i===models.length-1)throw error;
+          aiStatus.textContent=""+models[i].name+" 忙碌中，正在切換備援模型…";
+        }
+      }
+      throw lastError||new Error("Gemini 模型目前無法使用");
     }
     function validAiEntry(item){
       return item&&["income","expense"].indexOf(item.kind)>=0&&Number.isSafeInteger(Number(item.amount))&&Number(item.amount)>0&&
@@ -300,14 +324,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
           "最近對話="+JSON.stringify(aiHistory.slice(-8)),
           "使用者訊息="+question
         ].join("\n\n");
-        var result;
-        try{result=await aiModel.generateContent(prompt);}
-        catch(primaryError){
-          var primaryMessage=String(primaryError.message||primaryError);
-          if(!/high demand|temporarily unavailable|\[\s*500\s*\]|\[\s*503\s*\]|429/i.test(primaryMessage))throw primaryError;
-          aiStatus.textContent="Gemini 3.8 忙碌中，正在改用備援模型…";
-          result=await aiFallbackModel.generateContent(prompt);
-        }
+        var result=await generateWithFallback(prompt);
         var payload=JSON.parse(result.response.text());
         var message=String(payload.message||"我需要更多資訊才能協助你。");addAiMessage(message,"model");
         if(payload.action&&payload.action.type==="add"&&validAiEntry(payload.action.entry))showAiProposal({type:"add",entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
