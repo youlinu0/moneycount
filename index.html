@@ -25,7 +25,7 @@ input,select{width:100%;padding:11px;border:1px solid #dce4dc;border-radius:9px;
 #message{min-height:20px;color:#bd6251;font-size:13px}
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf0ec;font-size:14px}th{color:#7b877e;font-size:12px}
 .amount{text-align:right;white-space:nowrap}.delete{padding:7px 10px}.empty{text-align:center;padding:30px;color:#89948c}
-.row-edit-input{min-width:92px;padding:7px 8px;border:1px solid #dce4dc;border-radius:7px;font:inherit;font-size:13px}
+.editable-cell{cursor:pointer}.editable-cell:hover{background:#f4f8f4;outline:1px dashed #9bb4a2;outline-offset:-3px;border-radius:6px}.cell-editor{width:100%;min-width:88px;padding:7px 8px;border:1px solid #9bb4a2;border-radius:7px;font:inherit;font-size:13px}
 .hint{font-size:12px;color:#87928a;margin:10px 0 0}
 
 .account{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
@@ -83,7 +83,6 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   var STORAGE_KEY="moneycount_entries_v1";
   var selectedMonth=new Date(); selectedMonth.setDate(1);
   var categoryMap={expense:["飲食","交通","生活","購物","娛樂","其他"],income:["薪水","獎金","禮金","其他"]};
-  var editingId=null;
   var entries=readEntries();
   window.moneycountGetEntries=function(){return entries.slice();};
   window.moneycountApplyCloudEntries=function(items){entries=items;saveEntries();render();};
@@ -148,20 +147,10 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       return;
     }
     rows.innerHTML=visible.slice().sort(function(a,b){return b.date.localeCompare(a.date)||b.id-a.id;}).map(function(item){
-      if(editingId===Number(item.id)){
-        var kindOptions='<option value="expense"'+(item.kind==="expense"?" selected":"")+'">支出</option><option value="income"'+(item.kind==="income"?" selected":"")+'">收入</option>';
-        var categoryOptions=categoryMap[item.kind].map(function(name){return '<option value="'+escapeHtml(name)+'"'+(name===item.category?" selected":"")+'>'+escapeHtml(name)+'</option>';}).join("");
-        return "<tr data-edit-row='"+item.id+"'><td><input class='row-edit-input' data-field='date' type='date' value='"+escapeHtml(item.date)+"'></td>"+
-          "<td><select class='row-edit-input' data-field='kind'>"+kindOptions+"</select></td>"+
-          "<td><select class='row-edit-input' data-field='category'>"+categoryOptions+"</select></td>"+
-          "<td><input class='row-edit-input' data-field='note' maxlength='120' value='"+escapeHtml(item.note||"")+"' placeholder='備註'></td>"+
-          "<td><input class='row-edit-input amount' data-field='amount' type='number' min='1' step='1' value='"+escapeHtml(item.amount)+"'></td>"+
-          "<td><button class='delete' type='button' data-action='save' data-id='"+item.id+"'>儲存</button> <button class='delete' type='button' data-action='cancel' data-id='"+item.id+"'>取消</button></td></tr>";
-      }
-      return "<tr><td>"+escapeHtml(item.date)+"</td><td>"+(item.kind==="income"?"收入":"支出")+"</td><td>"+
-        escapeHtml(item.category)+"</td><td>"+escapeHtml(item.note||"—")+"</td><td class='amount "+
-        (item.kind==="income"?"income":"expense")+"'>"+(item.kind==="income"?"+":"−")+formatMoney(item.amount)+
-        "</td><td><button class='delete' type='button' data-action='edit' data-id='"+item.id+"'>編輯</button> <button class='delete' type='button' data-action='delete' data-id='"+item.id+"'>刪除</button></td></tr>";
+      return "<tr><td class='editable-cell' data-edit-field='date' data-id='"+item.id+"' title='點擊修改'>"+escapeHtml(item.date)+"</td><td class='editable-cell' data-edit-field='kind' data-id='"+item.id+"' title='點擊修改'>"+(item.kind==="income"?"收入":"支出")+"</td><td class='editable-cell' data-edit-field='category' data-id='"+item.id+"' title='點擊修改'>"+
+        escapeHtml(item.category)+"</td><td class='editable-cell' data-edit-field='note' data-id='"+item.id+"' title='點擊修改'>"+escapeHtml(item.note||"—")+"</td><td class='editable-cell amount "+
+        (item.kind==="income"?"income":"expense")+" editable-cell' data-edit-field='amount' data-id='"+item.id+"' title='點擊修改'>"+(item.kind==="income"?"+":"−")+formatMoney(item.amount)+
+        "</td><td><button class='delete' type='button' data-action='delete' data-id='"+item.id+"'>刪除</button></td></tr>";
     }).join("");
   }
 
@@ -192,39 +181,64 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     updateCategories();
     render();
   });
-  document.getElementById("rows").addEventListener("change",function(event){
-    if(event.target.getAttribute("data-field")!=="kind")return;
-    var row=event.target.closest("tr"),category=row.querySelector("[data-field='category']"),kind=event.target.value;
-    category.innerHTML=categoryMap[kind].map(function(name){return "<option value='"+escapeHtml(name)+"'>"+escapeHtml(name)+"</option>";}).join("");
+  function finishCellEdit(cell,save){
+    if(!cell||cell.getAttribute("data-editing")!=="true")return;
+    var editor=cell.querySelector(".cell-editor"),id=Number(cell.getAttribute("data-id")),field=cell.getAttribute("data-edit-field");
+    var current=entries.find(function(item){return Number(item.id)===id;});
+    if(!editor||!current)return;
+    cell.setAttribute("data-editing","false");
+    if(!save){render();return;}
+    var value=editor.value,updated=Object.assign({},current),message=document.getElementById("message");
+    message.textContent="";
+    if(field==="amount"){
+      value=Number(value);
+      if(!Number.isSafeInteger(value)||value<=0){message.textContent="金額請填寫大於 0 的整數。";render();return;}
+    }else if(field==="date"){
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||Number.isNaN(Date.parse(value+"T00:00:00"))||new Date(value+"T00:00:00").toISOString().slice(0,10)!==value){message.textContent="請填寫有效日期。";render();return;}
+    }else if(field==="kind"&&["income","expense"].indexOf(value)<0){render();return;}
+    else if(field==="category"&&categoryMap[current.kind].indexOf(value)<0){message.textContent="請選擇有效分類。";render();return;}
+    else if(field==="note")value=value.trim();
+    updated[field]=value;
+    var index=entries.indexOf(current);entries[index]=updated;
+    try{saveEntries();}catch(error){entries[index]=current;message.textContent="儲存失敗，請檢查瀏覽器儲存空間。";render();return;}
+    if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
+    render();message.textContent="已儲存並同步這項修改。";
+  }
+  document.getElementById("rows").addEventListener("click",function(event){
+    var cell=event.target.closest("td[data-edit-field]"),field,id,current,editor,options;
+    if(!cell||cell.getAttribute("data-editing")==="true")return;
+    field=cell.getAttribute("data-edit-field");id=Number(cell.getAttribute("data-id"));
+    current=entries.find(function(item){return Number(item.id)===id;});if(!current)return;
+    if(field==="date"||field==="amount"||field==="note"){
+      editor=document.createElement("input");editor.className="cell-editor";
+      editor.type=field==="date"?"date":field==="amount"?"number":"text";
+      if(field==="amount"){editor.min="1";editor.step="1";}
+      if(field==="note")editor.maxLength=120;
+      editor.value=field==="note"?current.note||"":current[field];
+    }else{
+      editor=document.createElement("select");editor.className="cell-editor";
+      options=field==="kind"?[{value:"expense",label:"支出"},{value:"income",label:"收入"}]:categoryMap[current.kind].map(function(name){return {value:name,label:name};});
+      options.forEach(function(option){var node=document.createElement("option");node.value=option.value;node.textContent=option.label;editor.appendChild(node);});
+      editor.value=current[field];
+    }
+    cell.setAttribute("data-editing","true");cell.replaceChildren(editor);editor.focus();
+    if(editor.select)editor.select();
+    editor.addEventListener("keydown",function(keyEvent){
+      if(keyEvent.key==="Escape"){keyEvent.preventDefault();finishCellEdit(cell,false);}
+      else if(keyEvent.key==="Enter"&&editor.tagName!=="SELECT"){keyEvent.preventDefault();finishCellEdit(cell,true);}
+    });
+    editor.addEventListener("change",function(){if(editor.tagName==="SELECT"||field==="date")finishCellEdit(cell,true);});
+    editor.addEventListener("blur",function(){finishCellEdit(cell,true);});
   });
   document.getElementById("rows").addEventListener("click",function(event){
-    var button=event.target.closest("button[data-action]"),id,action,current,row,updated,date,amount,kind,category,note,index;
+    var button=event.target.closest("button[data-action]"),id,current;
     if(!button)return;
-    id=Number(button.getAttribute("data-id"));action=button.getAttribute("data-action");
-    if(!id)return;
-    if(action==="edit"){editingId=id;render();return;}
-    if(action==="cancel"){editingId=null;render();return;}
-    current=entries.find(function(item){return Number(item.id)===id;});
-    if(!current)return;
-    if(action==="delete"){
-      entries=entries.filter(function(item){return Number(item.id)!==id;});
-      saveEntries();
-      if(window.moneycountSyncDelete)window.moneycountSyncDelete(id);
-      render();return;
-    }
-    if(action!=="save")return;
-    row=button.closest("tr");date=row.querySelector("[data-field='date']").value;
-    kind=row.querySelector("[data-field='kind']").value;category=row.querySelector("[data-field='category']").value;
-    amount=Number(row.querySelector("[data-field='amount']").value);note=row.querySelector("[data-field='note']").value.trim();
-    var message=document.getElementById("message");message.textContent="";
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||Number.isNaN(Date.parse(date+"T00:00:00"))||new Date(date+"T00:00:00").toISOString().slice(0,10)!==date){message.textContent="請填寫有效日期。";return;}
-    if(!Number.isSafeInteger(amount)||amount<=0){message.textContent="金額請填寫大於 0 的整數。";return;}
-    if(categoryMap[kind].indexOf(category)<0){message.textContent="請選擇有效分類。";return;}
-    updated={id:current.id,date:date,kind:kind,category:category,amount:amount,note:note};
-    index=entries.indexOf(current);entries[index]=updated;
-    try{saveEntries();}catch(error){entries[index]=current;message.textContent="儲存失敗，請檢查瀏覽器儲存空間。";return;}
-    if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
-    editingId=null;render();message.textContent="收支紀錄已更新。";
+    id=Number(button.getAttribute("data-id"));if(!id)return;
+    current=entries.find(function(item){return Number(item.id)===id;});if(!current)return;
+    entries=entries.filter(function(item){return Number(item.id)!==id;});
+    saveEntries();
+    if(window.moneycountSyncDelete)window.moneycountSyncDelete(id);
+    render();
   });
   updateCategories();
   render();
