@@ -27,6 +27,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 .amount{text-align:right;white-space:nowrap}.delete{padding:7px 10px}.empty{text-align:center;padding:30px;color:#89948c}
 .editable-cell{cursor:pointer}.editable-cell:hover{background:#f4f8f4;outline:1px dashed #9bb4a2;outline-offset:-3px;border-radius:6px}.cell-editor{width:100%;min-width:88px;padding:7px 8px;border:1px solid #9bb4a2;border-radius:7px;font:inherit;font-size:13px}
 .screen-tabs{display:flex;gap:8px;margin:8px 0 16px}.screen-tabs button,.manage-button{border:0;border-radius:9px;padding:10px 14px;background:#e8eee8;color:#315943;font:inherit;font-weight:700;cursor:pointer}.screen-tabs button.active{background:#315943;color:white}.screen[hidden]{display:none}.distribution-list{display:grid;gap:12px}.distribution-item{padding:12px;border:1px solid #edf0ec;border-radius:11px}.distribution-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px}.distribution-sub{font-size:12px;color:#7b877e;margin-top:8px;display:flex;justify-content:space-between}.distribution-track{height:9px;border-radius:99px;background:#edf2ed;overflow:hidden}.distribution-bar{height:100%;border-radius:99px;background:#4b8061}.manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.manager-row{display:flex;gap:8px}.manager-row input{flex:1}.subcategory-tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.subcategory-tag{border:0;border-radius:99px;padding:7px 10px;background:#edf3ee;color:#315943;font:inherit;cursor:pointer}.subcategory-tag span{color:#bd6251;margin-left:6px}.report-total{font-size:24px;font-weight:700;color:#bd6251;margin-bottom:14px}
+.select-with-button{display:flex;gap:8px}.select-with-button select{flex:1;min-width:0}.inline-add{flex:none;border:0;border-radius:9px;padding:8px 10px;background:#edf3ee;color:#315943;font:inherit;font-weight:700;cursor:pointer}.subcategory-create{display:flex;gap:8px;align-items:center}.subcategory-create[hidden]{display:none}.subcategory-create input{flex:1;min-width:0}.subcategory-create button{border:0;border-radius:9px;padding:9px 12px;background:#315943;color:white;font:inherit;font-weight:700;cursor:pointer}
 .hint{font-size:12px;color:#87928a;margin:10px 0 0}
 
 .account{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
@@ -58,7 +59,8 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     <label>類型<select id="kind"><option value="expense">支出</option><option value="income">收入</option></select></label>
     <label>金額（數字）<input id="amount" type="number" min="1" step="1" required placeholder="例如 120"></label>
     <label>分類<select id="category"></select></label>
-    <label>子分類<select id="subcategory"></select></label>
+    <label>子分類<div class="select-with-button"><select id="subcategory"></select><button id="showSubcategoryCreator" class="inline-add" type="button">＋新增</button></div></label>
+    <div class="subcategory-create wide" id="subcategoryCreator" hidden><input id="entryNewSubcategoryName" maxlength="30" placeholder="輸入子分類名稱"><button id="saveEntrySubcategory" type="button">新增並選取</button><button id="cancelEntrySubcategory" class="inline-add" type="button">取消</button><span id="entrySubcategoryMessage" role="status"></span></div>
     <label>日期<input id="entryDate" type="date" required></label>
     <label class="wide">備註（選填）<input id="note" maxlength="120" placeholder="例如 午餐、薪水"></label>
     <button class="submit wide" type="submit">加入記錄</button>
@@ -83,13 +85,13 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 </div>
 <div id="reportScreen" class="screen" hidden>
   <section><h2>本月支出分布</h2><div id="reportTotal" class="report-total">0</div><div id="distributionList" class="distribution-list"></div></section>
-  <section><h2>分類與子分類管理</h2><p class="hint">新增或刪除分類、子分類後會立即儲存；登入後會同步到其他裝置。刪除分類不會刪除既有收支紀錄。</p>
+  <section><h2>分類管理</h2><p class="hint">分類可在此新增或刪除；新增子分類請到「記帳」頁的新增表單。設定會立即儲存，登入後同步到其他裝置。刪除分類不會刪除既有收支紀錄。</p>
     <div class="manager-grid">
       <label>管理收入／支出<select id="manageKind"><option value="expense">支出</option><option value="income">收入</option></select></label>
       <label>目前分類<select id="manageCategory"></select></label>
     </div>
     <div class="manager-row" style="margin-top:12px"><input id="newCategoryName" maxlength="30" placeholder="輸入新分類名稱"><button id="addCategoryButton" class="manage-button" type="button">新增分類</button></div>
-    <div class="manager-row" style="margin-top:10px"><input id="newSubcategoryName" maxlength="30" placeholder="輸入子分類名稱"><button id="addSubcategoryButton" class="manage-button" type="button">新增子分類</button><button id="removeCategoryButton" class="manage-button" type="button">刪除分類</button></div>
+    <div class="manager-row" style="margin-top:10px"><button id="removeCategoryButton" class="manage-button" type="button">刪除分類</button></div>
     <div id="subcategoryTags" class="subcategory-tags"></div><div id="settingsMessage" class="hint" role="status"></div>
   </section>
 </div>
@@ -271,15 +273,24 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     if(categoryMap[kind].length<=1){message.textContent="至少保留一個分類。";return;}
     changeCategorySettings(function(){categoryMap[kind]=categoryMap[kind].filter(function(item){return item!==name;});delete subcategoryMap[kind][name];});
   });
-  document.getElementById("addSubcategoryButton").addEventListener("click",function(){
-    var kind=document.getElementById("manageKind").value,category=document.getElementById("manageCategory").value,name=document.getElementById("newSubcategoryName").value.trim(),message=document.getElementById("settingsMessage");
+  document.getElementById("showSubcategoryCreator").addEventListener("click",function(){
+    var creator=document.getElementById("subcategoryCreator");creator.hidden=false;document.getElementById("entrySubcategoryMessage").textContent="";document.getElementById("entryNewSubcategoryName").focus();
+  });
+  document.getElementById("cancelEntrySubcategory").addEventListener("click",function(){document.getElementById("subcategoryCreator").hidden=true;document.getElementById("entryNewSubcategoryName").value="";});
+  function addSubcategoryFromEntry(){
+    var kind=document.getElementById("kind").value,category=document.getElementById("category").value,name=document.getElementById("entryNewSubcategoryName").value.trim(),message=document.getElementById("entrySubcategoryMessage");
     if(!category){message.textContent="請先選擇分類。";return;}
-    if(!name){message.textContent="請先輸入子分類名稱。";return;}
+    if(!name){message.textContent="請輸入子分類名稱。";return;}
     if(!subcategoryMap[kind][category])subcategoryMap[kind][category]=[];
     if(subcategoryMap[kind][category].indexOf(name)>=0){message.textContent="這個子分類已經存在。";return;}
-    changeCategorySettings(function(){subcategoryMap[kind][category].push(name);});
-    if(subcategoryMap[kind][category].indexOf(name)>=0)document.getElementById("newSubcategoryName").value="";
-  });
+    if(!changeCategorySettings(function(){subcategoryMap[kind][category].push(name);}))return;
+    document.getElementById("subcategory").value=name;
+    document.getElementById("entryNewSubcategoryName").value="";
+    document.getElementById("subcategoryCreator").hidden=true;
+    message.textContent="已新增並選取「"+name+"」。";
+  }
+  document.getElementById("saveEntrySubcategory").addEventListener("click",addSubcategoryFromEntry);
+  document.getElementById("entryNewSubcategoryName").addEventListener("keydown",function(event){if(event.key==="Enter"){event.preventDefault();addSubcategoryFromEntry();}});
   document.getElementById("subcategoryTags").addEventListener("click",function(event){
     var button=event.target.closest("button[data-remove-subcategory]");if(!button)return;
     var kind=document.getElementById("manageKind").value,category=document.getElementById("manageCategory").value,name=button.getAttribute("data-remove-subcategory");
