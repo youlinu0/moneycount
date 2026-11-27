@@ -26,7 +26,7 @@ input,select{width:100%;padding:11px;border:1px solid #dce4dc;border-radius:9px;
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf0ec;font-size:14px}th{color:#7b877e;font-size:12px}
 .amount{text-align:right;white-space:nowrap}.delete{padding:7px 10px}.empty{text-align:center;padding:30px;color:#89948c}
 .editable-cell{cursor:pointer}.editable-cell:hover{background:#f4f8f4;outline:1px dashed #9bb4a2;outline-offset:-3px;border-radius:6px}.cell-editor{width:100%;min-width:88px;padding:7px 8px;border:1px solid #9bb4a2;border-radius:7px;font:inherit;font-size:13px}
-.screen-tabs{display:flex;gap:8px;margin:8px 0 16px}.screen-tabs button,.manage-button{border:0;border-radius:9px;padding:10px 14px;background:#e8eee8;color:#315943;font:inherit;font-weight:700;cursor:pointer}.screen-tabs button.active{background:#315943;color:white}.screen[hidden]{display:none}.distribution-list{display:grid;gap:12px}.distribution-item{padding:12px;border:1px solid #edf0ec;border-radius:11px}.distribution-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px}.distribution-sub{font-size:12px;color:#7b877e;margin-top:8px;display:flex;justify-content:space-between}.distribution-track{height:9px;border-radius:99px;background:#edf2ed;overflow:hidden}.distribution-bar{height:100%;border-radius:99px;background:#4b8061}.manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.manager-row{display:flex;gap:8px}.manager-row input{flex:1}.subcategory-tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.subcategory-tag{border:0;border-radius:99px;padding:7px 10px;background:#edf3ee;color:#315943;font:inherit;cursor:pointer}.subcategory-tag span{color:#bd6251;margin-left:6px}.report-total{font-size:24px;font-weight:700;color:#bd6251;margin-bottom:14px}
+.screen-tabs{display:flex;gap:8px;margin:8px 0 16px}.screen-tabs button,.manage-button{border:0;border-radius:9px;padding:10px 14px;background:#e8eee8;color:#315943;font:inherit;font-weight:700;cursor:pointer}.screen-tabs button.active{background:#315943;color:white}.screen[hidden]{display:none}.distribution-list{display:grid;gap:12px}.distribution-item{padding:12px;border:1px solid #edf0ec;border-radius:11px}.distribution-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px}.distribution-sub{font-size:12px;color:#7b877e;margin-top:8px;display:flex;justify-content:space-between}.distribution-track{height:9px;border-radius:99px;background:#edf2ed;overflow:hidden}.distribution-bar{height:100%;border-radius:99px;background:#4b8061}.manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.manager-row{display:flex;gap:8px}.manager-row input{flex:1}.subcategory-tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.subcategory-tag{border:0;border-radius:99px;padding:7px 10px;background:#edf3ee;color:#315943;font:inherit;cursor:pointer}.subcategory-tag span{color:#bd6251;margin-left:6px}.report-total{font-size:24px;font-weight:700;color:#bd6251;margin-bottom:14px}.pie-layout{display:flex;align-items:center;gap:26px;flex-wrap:wrap}.pie-chart{width:min(62vw,260px);aspect-ratio:1;border-radius:50%;flex:none;border:1px solid #e3e9e2}.pie-legend{display:grid;gap:9px;min-width:190px}.pie-legend-item{display:grid;grid-template-columns:12px 1fr auto;gap:8px;align-items:center;font-size:13px}.pie-swatch{width:11px;height:11px;border-radius:3px}.compare-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}.compare-total{background:#f7f9f7;border-radius:11px;padding:12px}.compare-total span{display:block;color:#7b877e;font-size:12px}.compare-total strong{font-size:20px}.compare-change{font-weight:700;padding:10px 0}.compare-up{color:#bd6251}.compare-down{color:#36805a}.compare-list{display:grid;gap:10px}.compare-row{padding:11px;border:1px solid #edf0ec;border-radius:10px}.compare-title{display:flex;justify-content:space-between;gap:10px;margin-bottom:7px}.compare-values{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;color:#748078;font-size:12px}.compare-values strong{color:#25352d}
 .select-with-button{display:flex;gap:8px}.select-with-button select{flex:1;min-width:0}.inline-add{flex:none;border:0;border-radius:9px;padding:8px 10px;background:#edf3ee;color:#315943;font:inherit;font-weight:700;cursor:pointer}.subcategory-create{display:flex;gap:8px;align-items:center}.subcategory-create[hidden]{display:none}.subcategory-create input{flex:1;min-width:0}.subcategory-create button{border:0;border-radius:9px;padding:9px 12px;background:#315943;color:white;font:inherit;font-weight:700;cursor:pointer}
 .choice-list{display:flex;flex-wrap:wrap;gap:7px;min-height:34px}.choice-option{display:inline-flex;align-items:center;overflow:hidden;border:1px solid #dce4dc;border-radius:99px;background:#f8faf8}.choice-option.selected{border-color:#315943;background:#edf3ee}.choice-pick,.choice-remove{border:0;background:transparent;color:#315943;font:inherit;cursor:pointer}.choice-pick{padding:7px 10px}.choice-remove{padding:3px 6px;color:#bd6251;font-size:12px;line-height:1;font-weight:700}.choice-remove:hover{background:#f8e9e6}
 .entry-choice-field{display:grid;gap:6px}.field-caption{font-size:13px;color:#637168}
@@ -88,7 +88,8 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 </section>
 </div>
 <div id="reportScreen" class="screen" hidden>
-  <section><h2>本月支出分布</h2><div id="reportTotal" class="report-total">0</div><div id="distributionList" class="distribution-list"></div></section>
+  <section><h2>月支出圓餅圖</h2><div id="reportTotal" class="report-total">0</div><div class="pie-layout"><div id="expensePie" class="pie-chart" role="img" aria-label="月支出圓餅圖"></div><div id="pieLegend" class="pie-legend"></div></div><h2 style="margin-top:22px">分類與子分類明細</h2><div id="distributionList" class="distribution-list"></div></section>
+  <section><h2>和上月比較 <span id="comparisonMonthLabel"></span></h2><div id="comparisonSummary" class="compare-summary"></div><div id="comparisonChange" class="compare-change"></div><div id="categoryComparison" class="compare-list"></div></section>
 </div>
 </main>
 <script>
@@ -217,18 +218,57 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     renderChoiceOptions(document.getElementById("subcategoryChoices"),options,select.value,"data-pick-subcategory","data-delete-subcategory");
   }
   function renderDistribution(){
-    var items=entries.filter(function(item){return item.date.slice(0,7)===monthKey()&&item.kind==="expense";});
-    var total=items.reduce(function(sum,item){return sum+Number(item.amount||0);},0),container=document.getElementById("distributionList");
-    document.getElementById("reportTotal").textContent="支出總額："+formatMoney(total);
-    container.replaceChildren();
-    if(!items.length){container.textContent="這個月還沒有支出記錄。";return;}
-    var groups=Object.create(null);items.forEach(function(item){var category=item.category||"其他";if(!groups[category])groups[category]={total:0,subcategories:Object.create(null)};groups[category].total+=Number(item.amount||0);var sub=item.subcategory||"未設定子分類";groups[category].subcategories[sub]=(groups[category].subcategories[sub]||0)+Number(item.amount||0);});
-    Object.keys(groups).sort(function(a,b){return groups[b].total-groups[a].total;}).forEach(function(name){
+    var previousMonth=new Date(selectedMonth);previousMonth.setMonth(previousMonth.getMonth()-1);
+    function labelMonth(date){return date.getFullYear()+"年"+(date.getMonth()+1)+"月";}
+    function totalsFor(key){
+      var result={total:0,categories:Object.create(null)};
+      entries.forEach(function(item){if(item.date.slice(0,7)!==key||item.kind!=="expense")return;var name=item.category||"其他",amount=Number(item.amount||0);result.total+=amount;result.categories[name]=(result.categories[name]||0)+amount;});
+      return result;
+    }
+    var current=totalsFor(monthKey()),previous=totalsFor(previousMonth.getFullYear()+"-"+pad(previousMonth.getMonth()+1));
+    var items=entries.filter(function(item){return item.date.slice(0,7)===monthKey()&&item.kind==="expense";}),groups=Object.create(null);
+    items.forEach(function(item){var category=item.category||"其他";if(!groups[category])groups[category]={total:0,subcategories:Object.create(null)};groups[category].total+=Number(item.amount||0);var sub=item.subcategory||"未設定子分類";groups[category].subcategories[sub]=(groups[category].subcategories[sub]||0)+Number(item.amount||0);});
+    document.getElementById("reportTotal").textContent=labelMonth(selectedMonth)+"支出總額："+formatMoney(current.total);
+
+    var pie=document.getElementById("expensePie"),legend=document.getElementById("pieLegend"),palette=["#315943","#d07a54","#7796bc","#b2a05c","#9a78a4","#5faaa1","#d28b9b","#7d8e75","#bc9a77","#78849c"];
+    var categoryNames=Object.keys(current.categories).sort(function(a,b){return current.categories[b]-current.categories[a];}),stops=[],start=0;
+    legend.replaceChildren();
+    if(current.total>0){
+      categoryNames.forEach(function(name,index){
+        var end=start+current.categories[name]/current.total*100,color=palette[index%palette.length];stops.push(color+" "+start+"% "+end+"%");start=end;
+        var row=document.createElement("div");row.className="pie-legend-item";var swatch=document.createElement("span");swatch.className="pie-swatch";swatch.style.backgroundColor=color;var title=document.createElement("span");title.textContent=name;var amount=document.createElement("strong");amount.textContent=formatMoney(current.categories[name])+"（"+Math.round(current.categories[name]/current.total*100)+"%）";row.append(swatch,title,amount);legend.appendChild(row);
+      });
+      pie.style.background="conic-gradient("+stops.join(",")+")";
+      pie.setAttribute("aria-label",labelMonth(selectedMonth)+"支出圓餅圖："+categoryNames.map(function(name){return name+" "+current.categories[name];}).join("、"));
+    }else{
+      pie.style.background="#edf2ed";pie.setAttribute("aria-label",labelMonth(selectedMonth)+"沒有支出");
+      var emptyLegend=document.createElement("div");emptyLegend.className="hint";emptyLegend.textContent="這個月還沒有支出。";legend.appendChild(emptyLegend);
+    }
+
+    var detailList=document.getElementById("distributionList");detailList.replaceChildren();
+    if(!items.length){detailList.textContent="這個月還沒有支出記錄。";}
+    else Object.keys(groups).sort(function(a,b){return groups[b].total-groups[a].total;}).forEach(function(name){
       var group=groups[name],article=document.createElement("div");article.className="distribution-item";
-      var head=document.createElement("div");head.className="distribution-head";var label=document.createElement("strong");label.textContent=name;var value=document.createElement("span");value.textContent=formatMoney(group.total)+"（"+(total?Math.round(group.total/total*100):0)+"%）";head.append(label,value);
-      var track=document.createElement("div");track.className="distribution-track";var bar=document.createElement("div");bar.className="distribution-bar";bar.style.width=(total?group.total/total*100:0)+"%";track.appendChild(bar);article.append(head,track);
+      var head=document.createElement("div");head.className="distribution-head";var label=document.createElement("strong");label.textContent=name;var value=document.createElement("span");value.textContent=formatMoney(group.total)+"（"+(current.total?Math.round(group.total/current.total*100):0)+"%）";head.append(label,value);
+      var track=document.createElement("div");track.className="distribution-track";var bar=document.createElement("div");bar.className="distribution-bar";bar.style.width=(current.total?group.total/current.total*100:0)+"%";track.appendChild(bar);article.append(head,track);
       Object.keys(group.subcategories).sort(function(a,b){return group.subcategories[b]-group.subcategories[a];}).forEach(function(sub){var line=document.createElement("div");line.className="distribution-sub";var subName=document.createElement("span");subName.textContent=sub;var subValue=document.createElement("span");subValue.textContent=formatMoney(group.subcategories[sub]);line.append(subName,subValue);article.appendChild(line);});
-      container.appendChild(article);
+      detailList.appendChild(article);
+    });
+
+    document.getElementById("comparisonMonthLabel").textContent="（"+labelMonth(previousMonth)+"）";
+    var summary=document.getElementById("comparisonSummary");summary.replaceChildren();
+    [[labelMonth(selectedMonth),current.total],[labelMonth(previousMonth),previous.total]].forEach(function(pair){var card=document.createElement("div");card.className="compare-total";var caption=document.createElement("span");caption.textContent=pair[0];var amount=document.createElement("strong");amount.textContent=formatMoney(pair[1]);card.append(caption,amount);summary.appendChild(card);});
+    var change=current.total-previous.total,changeLabel=document.getElementById("comparisonChange");
+    changeLabel.className="compare-change"+(change>0?" compare-up":change<0?" compare-down":"");
+    if(change>0)changeLabel.textContent="比上月增加 "+formatMoney(change)+" 元"+(previous.total?"（+"+Math.round(change/previous.total*100)+"%）":"（上月為 0，無法計算百分比）");
+    else if(change<0)changeLabel.textContent="比上月減少 "+formatMoney(Math.abs(change))+" 元（−"+(previous.total?Math.round(Math.abs(change)/previous.total*100):100)+"%）";
+    else changeLabel.textContent="和上月支出相同。";
+    var compareList=document.getElementById("categoryComparison");compareList.replaceChildren();
+    var compareNames=Array.from(new Set(Object.keys(current.categories).concat(Object.keys(previous.categories)))).sort(function(a,b){return (current.categories[b]||0)-(current.categories[a]||0);});
+    if(!compareNames.length){compareList.textContent="目前月份和上月都沒有支出分類。";return;}
+    compareNames.forEach(function(name){var now=current.categories[name]||0,before=previous.categories[name]||0,delta=now-before,row=document.createElement("div");row.className="compare-row";
+      var title=document.createElement("div");title.className="compare-title";var category=document.createElement("strong");category.textContent=name;var diff=document.createElement("span");diff.className=delta>0?"compare-up":delta<0?"compare-down":"";diff.textContent=delta>0?"+"+formatMoney(delta):delta<0?"−"+formatMoney(Math.abs(delta)):"持平";title.append(category,diff);
+      var values=document.createElement("div");values.className="compare-values";var currentLabel=document.createElement("span");currentLabel.textContent=labelMonth(selectedMonth)+"：";var currentAmount=document.createElement("strong");currentAmount.textContent=formatMoney(now);var previousLabel=document.createElement("span");previousLabel.textContent=labelMonth(previousMonth)+"：";var previousAmount=document.createElement("strong");previousAmount.textContent=formatMoney(before);values.append(currentLabel,currentAmount,previousLabel,previousAmount);row.append(title,values);compareList.appendChild(row);
     });
   }
   function render(){
