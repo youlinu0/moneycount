@@ -28,6 +28,8 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 .editable-cell{cursor:pointer}.editable-cell:hover{background:#f4f8f4;outline:1px dashed #9bb4a2;outline-offset:-3px;border-radius:6px}.cell-editor{width:100%;min-width:88px;padding:7px 8px;border:1px solid #9bb4a2;border-radius:7px;font:inherit;font-size:13px}
 .screen-tabs{display:flex;gap:8px;margin:8px 0 16px}.screen-tabs button,.manage-button{border:0;border-radius:9px;padding:10px 14px;background:#e8eee8;color:#315943;font:inherit;font-weight:700;cursor:pointer}.screen-tabs button.active{background:#315943;color:white}.screen[hidden]{display:none}.distribution-list{display:grid;gap:12px}.distribution-item{padding:12px;border:1px solid #edf0ec;border-radius:11px}.distribution-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px}.distribution-sub{font-size:12px;color:#7b877e;margin-top:8px;display:flex;justify-content:space-between}.distribution-track{height:9px;border-radius:99px;background:#edf2ed;overflow:hidden}.distribution-bar{height:100%;border-radius:99px;background:#4b8061}.manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.manager-row{display:flex;gap:8px}.manager-row input{flex:1}.subcategory-tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.subcategory-tag{border:0;border-radius:99px;padding:7px 10px;background:#edf3ee;color:#315943;font:inherit;cursor:pointer}.subcategory-tag span{color:#bd6251;margin-left:6px}.report-total{font-size:24px;font-weight:700;color:#bd6251;margin-bottom:14px}
 .select-with-button{display:flex;gap:8px}.select-with-button select{flex:1;min-width:0}.inline-add{flex:none;border:0;border-radius:9px;padding:8px 10px;background:#edf3ee;color:#315943;font:inherit;font-weight:700;cursor:pointer}.subcategory-create{display:flex;gap:8px;align-items:center}.subcategory-create[hidden]{display:none}.subcategory-create input{flex:1;min-width:0}.subcategory-create button{border:0;border-radius:9px;padding:9px 12px;background:#315943;color:white;font:inherit;font-weight:700;cursor:pointer}
+.choice-list{display:flex;flex-wrap:wrap;gap:7px;min-height:34px}.choice-option{display:inline-flex;align-items:center;overflow:hidden;border:1px solid #dce4dc;border-radius:99px;background:#f8faf8}.choice-option.selected{border-color:#315943;background:#edf3ee}.choice-pick,.choice-remove{border:0;background:transparent;color:#315943;font:inherit;cursor:pointer}.choice-pick{padding:7px 10px}.choice-remove{padding:6px 9px;color:#bd6251;font-size:17px;font-weight:700}.choice-remove:hover{background:#f8e9e6}
+.entry-choice-field{display:grid;gap:6px}.field-caption{font-size:13px;color:#637168}
 .hint{font-size:12px;color:#87928a;margin:10px 0 0}
 
 .account{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
@@ -58,15 +60,15 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   <form id="entryForm">
     <label>類型<select id="kind"><option value="expense">支出</option><option value="income">收入</option></select></label>
     <label>金額（數字）<input id="amount" type="number" min="1" step="1" required placeholder="例如 120"></label>
-    <label>分類<select id="category"></select></label>
-    <label>子分類<div class="select-with-button"><select id="subcategory"></select><button id="showSubcategoryCreator" class="inline-add" type="button">＋新增</button></div></label>
+    <div class="entry-choice-field"><span class="field-caption">分類</span><div id="categoryChoices" class="choice-list" role="group" aria-label="分類選項"></div><select id="category" hidden></select></div>
+    <div class="entry-choice-field"><span class="field-caption">子分類</span><div id="subcategoryChoices" class="choice-list" role="group" aria-label="子分類選項"></div><select id="subcategory" hidden></select><button id="showSubcategoryCreator" class="inline-add" type="button">＋新增子分類</button></div>
     <div class="subcategory-create wide" id="subcategoryCreator" hidden><input id="entryNewSubcategoryName" maxlength="30" placeholder="輸入子分類名稱"><button id="saveEntrySubcategory" type="button">新增並選取</button><button id="cancelEntrySubcategory" class="inline-add" type="button">取消</button><span id="entrySubcategoryMessage" role="status"></span></div>
     <label>日期<input id="entryDate" type="date" required></label>
     <label class="wide">備註（選填）<input id="note" maxlength="120" placeholder="例如 午餐、薪水"></label>
     <button class="submit wide" type="submit">加入記錄</button>
     <div class="wide" id="message" role="status"></div>
   </form>
-  <p class="hint">資料會保存在目前這個瀏覽器與裝置中。</p>
+  <p class="hint">變更會立即儲存；登入後會同步到其他裝置。</p>
 </section>
 <section>
   <h2>收支紀錄</h2>
@@ -85,14 +87,12 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 </div>
 <div id="reportScreen" class="screen" hidden>
   <section><h2>本月支出分布</h2><div id="reportTotal" class="report-total">0</div><div id="distributionList" class="distribution-list"></div></section>
-  <section><h2>分類管理</h2><p class="hint">分類可在此新增或刪除；新增子分類請到「記帳」頁的新增表單。設定會立即儲存，登入後同步到其他裝置。刪除分類不會刪除既有收支紀錄。</p>
+  <section><h2>新增分類</h2><p class="hint">在這裡新增收入或支出分類。分類和子分類的刪除按鈕在「記帳」頁各選項旁；刪除不會移除既有收支紀錄。設定會立即儲存，登入後同步到其他裝置。</p>
     <div class="manager-grid">
-      <label>管理收入／支出<select id="manageKind"><option value="expense">支出</option><option value="income">收入</option></select></label>
-      <label>目前分類<select id="manageCategory"></select></label>
+      <label>新增到<select id="manageKind"><option value="expense">支出</option><option value="income">收入</option></select></label>
     </div>
     <div class="manager-row" style="margin-top:12px"><input id="newCategoryName" maxlength="30" placeholder="輸入新分類名稱"><button id="addCategoryButton" class="manage-button" type="button">新增分類</button></div>
-    <div class="manager-row" style="margin-top:10px"><button id="removeCategoryButton" class="manage-button" type="button">刪除分類</button></div>
-    <div id="subcategoryTags" class="subcategory-tags"></div><div id="settingsMessage" class="hint" role="status"></div>
+    <div id="settingsMessage" class="hint" role="status"></div>
   </section>
 </div>
 </main>
@@ -114,7 +114,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     var settings=normalizeCategorySettings(value);
     categoryMap=settings.categories;subcategoryMap=settings.subcategories;
     try{localStorage.setItem(CATEGORY_KEY,JSON.stringify(settings));}catch(error){}
-    updateCategories();renderCategoryManager();renderDistribution();render();
+    updateCategories();renderDistribution();render();
   };
   window.moneycountApplyAiChange=function(change){
     var current,updated;
@@ -168,7 +168,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     try{localStorage.setItem(CATEGORY_KEY,JSON.stringify(settings));}
     catch(error){document.getElementById("settingsMessage").textContent="本機儲存空間不足，這次變更沒有儲存。";return false;}
     if(window.moneycountSyncSettings)window.moneycountSyncSettings(settings);
-    updateCategories();renderCategoryManager();renderDistribution();render();
+    updateCategories();renderDistribution();render();
     document.getElementById("settingsMessage").textContent="變更已儲存。";
     return true;
   }
@@ -177,7 +177,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     change();
     if(persistCategorySettings())return true;
     categoryMap=before.categories;subcategoryMap=before.subcategories;
-    updateCategories();renderCategoryManager();renderDistribution();render();
+    updateCategories();renderDistribution();render();
     return false;
   }
   function pad(n){return String(n).padStart(2,"0");}
@@ -197,23 +197,29 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       return "<option value='"+escapeHtml(name)+"'>"+escapeHtml(name)+"</option>";
     }).join("");
     if(categoryMap[kind].indexOf(previous)>=0)category.value=previous;
+    renderEntryCategoryChoices();
     updateEntrySubcategories();
+  }
+  function renderChoiceOptions(container,options,selected,pickAttribute,deleteAttribute){
+    container.replaceChildren();
+    options.forEach(function(option){
+      var wrapper=document.createElement("span");wrapper.className="choice-option"+(option.value===selected?" selected":"");
+      var pick=document.createElement("button");pick.type="button";pick.className="choice-pick";pick.textContent=option.label;pick.setAttribute(pickAttribute,option.value);wrapper.appendChild(pick);
+      if(deleteAttribute&&option.deletable){var remove=document.createElement("button");remove.type="button";remove.className="choice-remove";remove.textContent="×";remove.title="刪除「"+option.label+"」";remove.setAttribute("aria-label","刪除"+option.label);remove.setAttribute(deleteAttribute,option.value);wrapper.appendChild(remove);}
+      container.appendChild(wrapper);
+    });
+  }
+  function renderEntryCategoryChoices(){
+    var kind=document.getElementById("kind").value,selected=document.getElementById("category").value;
+    renderChoiceOptions(document.getElementById("categoryChoices"),categoryMap[kind].map(function(name){return {value:name,label:name,deletable:true};}),selected,"data-pick-category","data-delete-category");
   }
   function updateEntrySubcategories(){
     var kind=document.getElementById("kind").value,category=document.getElementById("category").value,select=document.getElementById("subcategory");
     var names=(subcategoryMap[kind]&&subcategoryMap[kind][category])||[],previous=select.value;
     select.innerHTML='<option value="">無</option>'+names.map(function(name){return '<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>';}).join("");
     if(names.indexOf(previous)>=0)select.value=previous;
-  }
-  function renderCategoryManager(){
-    var kind=document.getElementById("manageKind").value,categorySelect=document.getElementById("manageCategory"),previous=categorySelect.value;
-    categorySelect.innerHTML=categoryMap[kind].map(function(name){return '<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>';}).join("");
-    if(categoryMap[kind].indexOf(previous)>=0)categorySelect.value=previous;
-    var selected=categorySelect.value,names=(subcategoryMap[kind]&&subcategoryMap[kind][selected])||[],container=document.getElementById("subcategoryTags");
-    container.replaceChildren();
-    if(!selected){container.textContent="請先新增分類。";return;}
-    if(!names.length){container.textContent="這個分類還沒有子分類。";return;}
-    names.forEach(function(name){var button=document.createElement("button");button.type="button";button.className="subcategory-tag";button.setAttribute("data-remove-subcategory",name);button.textContent=name;var remove=document.createElement("span");remove.textContent="×";button.appendChild(remove);container.appendChild(button);});
+    var options=[{value:"",label:"無",deletable:false}].concat(names.map(function(name){return {value:name,label:name,deletable:true};}));
+    renderChoiceOptions(document.getElementById("subcategoryChoices"),options,select.value,"data-pick-subcategory","data-delete-subcategory");
   }
   function renderDistribution(){
     var items=entries.filter(function(item){return item.date.slice(0,7)===monthKey()&&item.kind==="expense";});
@@ -258,9 +264,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   document.getElementById("prev").addEventListener("click",function(){selectedMonth.setMonth(selectedMonth.getMonth()-1);render();});
   document.getElementById("next").addEventListener("click",function(){selectedMonth.setMonth(selectedMonth.getMonth()+1);render();});
   document.getElementById("ledgerTab").addEventListener("click",function(){document.getElementById("ledgerScreen").hidden=false;document.getElementById("reportScreen").hidden=true;this.classList.add("active");document.getElementById("reportTab").classList.remove("active");});
-  document.getElementById("reportTab").addEventListener("click",function(){document.getElementById("ledgerScreen").hidden=true;document.getElementById("reportScreen").hidden=false;this.classList.add("active");document.getElementById("ledgerTab").classList.remove("active");renderCategoryManager();renderDistribution();});
-  document.getElementById("manageKind").addEventListener("change",renderCategoryManager);
-  document.getElementById("manageCategory").addEventListener("change",renderCategoryManager);
+  document.getElementById("reportTab").addEventListener("click",function(){document.getElementById("ledgerScreen").hidden=true;document.getElementById("reportScreen").hidden=false;this.classList.add("active");document.getElementById("ledgerTab").classList.remove("active");renderDistribution();});
   document.getElementById("addCategoryButton").addEventListener("click",function(){
     var kind=document.getElementById("manageKind").value,name=document.getElementById("newCategoryName").value.trim(),message=document.getElementById("settingsMessage");
     if(!name){message.textContent="請先輸入分類名稱。";return;}
@@ -268,10 +272,15 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     changeCategorySettings(function(){categoryMap[kind].push(name);});
     if(categoryMap[kind].indexOf(name)>=0)document.getElementById("newCategoryName").value="";
   });
-  document.getElementById("removeCategoryButton").addEventListener("click",function(){
-    var kind=document.getElementById("manageKind").value,name=document.getElementById("manageCategory").value,message=document.getElementById("settingsMessage");
-    if(categoryMap[kind].length<=1){message.textContent="至少保留一個分類。";return;}
-    changeCategorySettings(function(){categoryMap[kind]=categoryMap[kind].filter(function(item){return item!==name;});delete subcategoryMap[kind][name];});
+  document.getElementById("categoryChoices").addEventListener("click",function(event){
+    var remove=event.target.closest("button[data-delete-category]"),pick=event.target.closest("button[data-pick-category]"),kind=document.getElementById("kind").value,message=document.getElementById("message");
+    if(remove){var removeName=remove.getAttribute("data-delete-category");if(categoryMap[kind].length<=1){message.textContent="每種收支至少要保留一個分類。";return;}if(!changeCategorySettings(function(){categoryMap[kind]=categoryMap[kind].filter(function(name){return name!==removeName;});delete subcategoryMap[kind][removeName];})){message.textContent="儲存失敗，分類沒有刪除。";return;}message.textContent="分類已刪除；既有紀錄仍保留。";return;}
+    if(pick){document.getElementById("category").value=pick.getAttribute("data-pick-category");renderEntryCategoryChoices();updateEntrySubcategories();}
+  });
+  document.getElementById("subcategoryChoices").addEventListener("click",function(event){
+    var remove=event.target.closest("button[data-delete-subcategory]"),pick=event.target.closest("button[data-pick-subcategory]"),message=document.getElementById("message");
+    if(remove){var kind=document.getElementById("kind").value,category=document.getElementById("category").value,name=remove.getAttribute("data-delete-subcategory");if(!changeCategorySettings(function(){subcategoryMap[kind][category]=(subcategoryMap[kind][category]||[]).filter(function(item){return item!==name;});})){message.textContent="儲存失敗，子分類沒有刪除。";return;}message.textContent="子分類已刪除；既有紀錄仍保留。";return;}
+    if(pick){document.getElementById("subcategory").value=pick.getAttribute("data-pick-subcategory");updateEntrySubcategories();}
   });
   document.getElementById("showSubcategoryCreator").addEventListener("click",function(){
     var creator=document.getElementById("subcategoryCreator");creator.hidden=false;document.getElementById("entrySubcategoryMessage").textContent="";document.getElementById("entryNewSubcategoryName").focus();
@@ -283,19 +292,15 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     if(!name){message.textContent="請輸入子分類名稱。";return;}
     if(!subcategoryMap[kind][category])subcategoryMap[kind][category]=[];
     if(subcategoryMap[kind][category].indexOf(name)>=0){message.textContent="這個子分類已經存在。";return;}
-    if(!changeCategorySettings(function(){subcategoryMap[kind][category].push(name);}))return;
+    if(!changeCategorySettings(function(){subcategoryMap[kind][category].push(name);})){message.textContent="儲存失敗，子分類沒有新增。";return;}
     document.getElementById("subcategory").value=name;
+    updateEntrySubcategories();
     document.getElementById("entryNewSubcategoryName").value="";
     document.getElementById("subcategoryCreator").hidden=true;
     message.textContent="已新增並選取「"+name+"」。";
   }
   document.getElementById("saveEntrySubcategory").addEventListener("click",addSubcategoryFromEntry);
   document.getElementById("entryNewSubcategoryName").addEventListener("keydown",function(event){if(event.key==="Enter"){event.preventDefault();addSubcategoryFromEntry();}});
-  document.getElementById("subcategoryTags").addEventListener("click",function(event){
-    var button=event.target.closest("button[data-remove-subcategory]");if(!button)return;
-    var kind=document.getElementById("manageKind").value,category=document.getElementById("manageCategory").value,name=button.getAttribute("data-remove-subcategory");
-    changeCategorySettings(function(){subcategoryMap[kind][category]=(subcategoryMap[kind][category]||[]).filter(function(item){return item!==name;});});
-  });
   document.getElementById("entryDate").value=localDate();
   document.getElementById("entryForm").addEventListener("submit",function(event){
     event.preventDefault();
@@ -384,7 +389,6 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     render();
   });
   updateCategories();
-  renderCategoryManager();
   render();
 })();
 </script>
