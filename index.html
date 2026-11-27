@@ -26,6 +26,7 @@ input,select{width:100%;padding:11px;border:1px solid #dce4dc;border-radius:9px;
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px;border-bottom:1px solid #edf0ec;font-size:14px}th{color:#7b877e;font-size:12px}
 .amount{text-align:right;white-space:nowrap}.delete{padding:7px 10px}.empty{text-align:center;padding:30px;color:#89948c}
 .editable-cell{cursor:pointer}.editable-cell:hover{background:#f4f8f4;outline:1px dashed #9bb4a2;outline-offset:-3px;border-radius:6px}.cell-editor{width:100%;min-width:88px;padding:7px 8px;border:1px solid #9bb4a2;border-radius:7px;font:inherit;font-size:13px}
+.screen-tabs{display:flex;gap:8px;margin:8px 0 16px}.screen-tabs button,.manage-button{border:0;border-radius:9px;padding:10px 14px;background:#e8eee8;color:#315943;font:inherit;font-weight:700;cursor:pointer}.screen-tabs button.active{background:#315943;color:white}.screen[hidden]{display:none}.distribution-list{display:grid;gap:12px}.distribution-item{padding:12px;border:1px solid #edf0ec;border-radius:11px}.distribution-head{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px}.distribution-sub{font-size:12px;color:#7b877e;margin-top:8px;display:flex;justify-content:space-between}.distribution-track{height:9px;border-radius:99px;background:#edf2ed;overflow:hidden}.distribution-bar{height:100%;border-radius:99px;background:#4b8061}.manager-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.manager-row{display:flex;gap:8px}.manager-row input{flex:1}.subcategory-tags{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}.subcategory-tag{border:0;border-radius:99px;padding:7px 10px;background:#edf3ee;color:#315943;font:inherit;cursor:pointer}.subcategory-tag span{color:#bd6251;margin-left:6px}.report-total{font-size:24px;font-weight:700;color:#bd6251;margin-bottom:14px}
 .hint{font-size:12px;color:#87928a;margin:10px 0 0}
 
 .account{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end}
@@ -34,7 +35,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 .account button.secondary{background:#edf3ee;color:#315943}
 .account button[hidden]{display:none}
 .ai-panel{margin-top:16px}.ai-panel p{color:#728078;font-size:13px;line-height:1.6}.ai-messages{display:grid;gap:10px;max-height:340px;overflow:auto;margin:12px 0}.ai-message{max-width:90%;padding:11px 13px;border-radius:13px;background:#f1f5f1;white-space:pre-wrap;line-height:1.55}.ai-message.user{justify-self:end;background:#315943;color:white}.ai-form{display:grid;grid-template-columns:1fr auto;gap:9px}.ai-form button,.ai-confirm button{border:0;border-radius:9px;padding:10px 14px;background:#315943;color:white;font:inherit;font-weight:700;cursor:pointer}.ai-form button:disabled,.ai-confirm button:disabled{opacity:.55;cursor:wait}.ai-confirm{border:1px solid #dce4dc;border-radius:12px;padding:12px;margin-top:10px;background:#fbfcfa}.ai-confirm button.cancel{background:#edf3ee;color:#315943;margin-left:7px}.ai-status{min-height:20px;color:#bd6251;font-size:13px}
-@media(max-width:620px){.wrap{padding:22px 14px 40px}header{align-items:flex-start;flex-direction:column}.cards{gap:7px}.card{padding:13px 10px}.card strong{font-size:19px}form{grid-template-columns:1fr}.wide{grid-column:auto}table th:nth-child(4),table td:nth-child(4){display:none}th,td{padding:10px 5px;font-size:12px}}
+@media(max-width:620px){.wrap{padding:22px 14px 40px}header{align-items:flex-start;flex-direction:column}.cards{gap:7px}.card{padding:13px 10px}.card strong{font-size:19px}form{grid-template-columns:1fr}.wide{grid-column:auto}.manager-grid{grid-template-columns:1fr}.manager-row{flex-wrap:wrap}.manager-row .manage-button{flex:1}table th:nth-child(5),table td:nth-child(5){display:none}th,td{padding:10px 5px;font-size:12px}}
 </style>
 </head>
 <body>
@@ -44,6 +45,8 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   <div class="month"><button id="prev" aria-label="上個月">‹</button><span id="monthLabel"></span><button id="next" aria-label="下個月">›</button></div>
   <div class="account"><span id="authStatus">尚未登入</span><button id="loginButton" type="button">Google 登入</button><button id="logoutButton" class="secondary" type="button" hidden>登出</button></div>
 </header>
+<nav class="screen-tabs" aria-label="頁面切換"><button id="ledgerTab" class="active" type="button">記帳</button><button id="reportTab" type="button">月支出分布</button></nav>
+<div id="ledgerScreen" class="screen">
 <div class="cards">
   <div class="card"><span>本月收入</span><strong class="income" id="incomeTotal">0</strong></div>
   <div class="card"><span>本月支出</span><strong class="expense" id="expenseTotal">0</strong></div>
@@ -55,6 +58,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     <label>類型<select id="kind"><option value="expense">支出</option><option value="income">收入</option></select></label>
     <label>金額（數字）<input id="amount" type="number" min="1" step="1" required placeholder="例如 120"></label>
     <label>分類<select id="category"></select></label>
+    <label>子分類<select id="subcategory"></select></label>
     <label>日期<input id="entryDate" type="date" required></label>
     <label class="wide">備註（選填）<input id="note" maxlength="120" placeholder="例如 午餐、薪水"></label>
     <button class="submit wide" type="submit">加入記錄</button>
@@ -65,7 +69,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
 <section>
   <h2>收支紀錄</h2>
   <div style="overflow-x:auto">
-    <table><thead><tr><th>日期</th><th>類型</th><th>分類</th><th>備註</th><th class="amount">金額</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+    <table><thead><tr><th>日期</th><th>類型</th><th>分類</th><th>子分類</th><th>備註</th><th class="amount">金額</th><th></th></tr></thead><tbody id="rows"></tbody></table>
   </div>
 </section>
 <section class="ai-panel" aria-labelledby="aiTitle">
@@ -76,27 +80,51 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
   <div id="aiStatus" class="ai-status" role="status"></div>
   <div id="aiProposal" class="ai-confirm" hidden></div>
 </section>
+</div>
+<div id="reportScreen" class="screen" hidden>
+  <section><h2>本月支出分布</h2><div id="reportTotal" class="report-total">0</div><div id="distributionList" class="distribution-list"></div></section>
+  <section><h2>分類與子分類管理</h2><p class="hint">新增或刪除分類、子分類後會立即儲存；登入後會同步到其他裝置。刪除分類不會刪除既有收支紀錄。</p>
+    <div class="manager-grid">
+      <label>管理收入／支出<select id="manageKind"><option value="expense">支出</option><option value="income">收入</option></select></label>
+      <label>目前分類<select id="manageCategory"></select></label>
+    </div>
+    <div class="manager-row" style="margin-top:12px"><input id="newCategoryName" maxlength="30" placeholder="輸入新分類名稱"><button id="addCategoryButton" class="manage-button" type="button">新增分類</button></div>
+    <div class="manager-row" style="margin-top:10px"><input id="newSubcategoryName" maxlength="30" placeholder="輸入子分類名稱"><button id="addSubcategoryButton" class="manage-button" type="button">新增子分類</button><button id="removeCategoryButton" class="manage-button" type="button">刪除分類</button></div>
+    <div id="subcategoryTags" class="subcategory-tags"></div><div id="settingsMessage" class="hint" role="status"></div>
+  </section>
+</div>
 </main>
 <script>
 (function(){
   "use strict";
   var STORAGE_KEY="moneycount_entries_v1";
+  var CATEGORY_KEY="moneycount_categories_v1";
   var selectedMonth=new Date(); selectedMonth.setDate(1);
-  var categoryMap={expense:["飲食","交通","生活","購物","娛樂","其他"],income:["薪水","獎金","禮金","其他"]};
+  var defaultCategories={expense:["飲食","交通","生活","購物","娛樂","其他"],income:["薪水","獎金","禮金","其他"]};
+  var categoryMap=defaultCategories;
+  var subcategoryMap={expense:{},income:{}};
+  loadCategorySettings();
   var entries=readEntries();
   window.moneycountGetEntries=function(){return entries.slice();};
+  window.moneycountGetCategorySettings=function(){return {categories:categoryMap,subcategories:subcategoryMap};};
   window.moneycountApplyCloudEntries=function(items){entries=items;saveEntries();render();};
+  window.moneycountApplyCloudSettings=function(value){
+    var settings=normalizeCategorySettings(value);
+    categoryMap=settings.categories;subcategoryMap=settings.subcategories;
+    try{localStorage.setItem(CATEGORY_KEY,JSON.stringify(settings));}catch(error){}
+    updateCategories();renderCategoryManager();renderDistribution();render();
+  };
   window.moneycountApplyAiChange=function(change){
     var current,updated;
     if(change.type==="add"){
-      updated={id:Date.now()+Math.floor(Math.random()*1000),kind:change.entry.kind,amount:change.entry.amount,category:change.entry.category,date:change.entry.date,note:change.entry.note||""};
+      updated={id:Date.now()+Math.floor(Math.random()*1000),kind:change.entry.kind,amount:change.entry.amount,category:change.entry.category,subcategory:change.entry.subcategory||"",date:change.entry.date,note:change.entry.note||""};
       entries.push(updated);
       try{saveEntries();}catch(error){entries.pop();throw error;}
       if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
     }else if(change.type==="update"){
       current=entries.find(function(item){return Number(item.id)===Number(change.id);});
       if(!current)throw new Error("找不到要修改的那筆記錄，請重新詢問。");
-      updated={id:current.id,kind:change.entry.kind,amount:change.entry.amount,category:change.entry.category,date:change.entry.date,note:change.entry.note||""};
+      updated={id:current.id,kind:change.entry.kind,amount:change.entry.amount,category:change.entry.category,subcategory:change.entry.subcategory||"",date:change.entry.date,note:change.entry.note||""};
       var index=entries.indexOf(current);entries[index]=updated;
       try{saveEntries();}catch(error){entries[index]=current;throw error;}
       if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
@@ -115,6 +143,41 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     catch(error){ return []; }
   }
   function saveEntries(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(entries)); }
+  function normalizeCategorySettings(value){
+    var result={categories:{expense:[],income:[]},subcategories:{expense:{},income:{}}};
+    ["expense","income"].forEach(function(kind){
+      var source=value&&value.categories&&Array.isArray(value.categories[kind])?value.categories[kind]:defaultCategories[kind];
+      source.forEach(function(name){if(typeof name==="string"&&name.trim()&&name.length<=30&&result.categories[kind].indexOf(name)<0)result.categories[kind].push(name);});
+      if(!result.categories[kind].length)result.categories[kind]=defaultCategories[kind].slice();
+      var subs=value&&value.subcategories&&value.subcategories[kind];
+      if(subs&&typeof subs==="object")Object.keys(subs).forEach(function(name){
+        if(result.categories[kind].indexOf(name)<0||!Array.isArray(subs[name]))return;
+        result.subcategories[kind][name]=subs[name].filter(function(item,index,array){return typeof item==="string"&&item.trim()&&item.length<=30&&array.indexOf(item)===index;}).slice(0,100);
+      });
+    });
+    return result;
+  }
+  function loadCategorySettings(){
+    try{var saved=JSON.parse(localStorage.getItem(CATEGORY_KEY)||"null");if(saved){var normalized=normalizeCategorySettings(saved);categoryMap=normalized.categories;subcategoryMap=normalized.subcategories;}}
+    catch(error){categoryMap={expense:defaultCategories.expense.slice(),income:defaultCategories.income.slice()};subcategoryMap={expense:{},income:{}};}
+  }
+  function persistCategorySettings(){
+    var settings={categories:categoryMap,subcategories:subcategoryMap};
+    try{localStorage.setItem(CATEGORY_KEY,JSON.stringify(settings));}
+    catch(error){document.getElementById("settingsMessage").textContent="本機儲存空間不足，這次變更沒有儲存。";return false;}
+    if(window.moneycountSyncSettings)window.moneycountSyncSettings(settings);
+    updateCategories();renderCategoryManager();renderDistribution();render();
+    document.getElementById("settingsMessage").textContent="變更已儲存。";
+    return true;
+  }
+  function changeCategorySettings(change){
+    var before=JSON.parse(JSON.stringify({categories:categoryMap,subcategories:subcategoryMap}));
+    change();
+    if(persistCategorySettings())return true;
+    categoryMap=before.categories;subcategoryMap=before.subcategories;
+    updateCategories();renderCategoryManager();renderDistribution();render();
+    return false;
+  }
   function pad(n){return String(n).padStart(2,"0");}
   function monthKey(){return selectedMonth.getFullYear()+"-"+pad(selectedMonth.getMonth()+1);}
   function localDate(){
@@ -127,10 +190,43 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     });
   }
   function updateCategories(){
-    var kind=document.getElementById("kind").value;
-    document.getElementById("category").innerHTML=categoryMap[kind].map(function(name){
-      return "<option>"+name+"</option>";
+    var kind=document.getElementById("kind").value,category=document.getElementById("category"),previous=category.value;
+    category.innerHTML=categoryMap[kind].map(function(name){
+      return "<option value='"+escapeHtml(name)+"'>"+escapeHtml(name)+"</option>";
     }).join("");
+    if(categoryMap[kind].indexOf(previous)>=0)category.value=previous;
+    updateEntrySubcategories();
+  }
+  function updateEntrySubcategories(){
+    var kind=document.getElementById("kind").value,category=document.getElementById("category").value,select=document.getElementById("subcategory");
+    var names=(subcategoryMap[kind]&&subcategoryMap[kind][category])||[],previous=select.value;
+    select.innerHTML='<option value="">無</option>'+names.map(function(name){return '<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>';}).join("");
+    if(names.indexOf(previous)>=0)select.value=previous;
+  }
+  function renderCategoryManager(){
+    var kind=document.getElementById("manageKind").value,categorySelect=document.getElementById("manageCategory"),previous=categorySelect.value;
+    categorySelect.innerHTML=categoryMap[kind].map(function(name){return '<option value="'+escapeHtml(name)+'">'+escapeHtml(name)+'</option>';}).join("");
+    if(categoryMap[kind].indexOf(previous)>=0)categorySelect.value=previous;
+    var selected=categorySelect.value,names=(subcategoryMap[kind]&&subcategoryMap[kind][selected])||[],container=document.getElementById("subcategoryTags");
+    container.replaceChildren();
+    if(!selected){container.textContent="請先新增分類。";return;}
+    if(!names.length){container.textContent="這個分類還沒有子分類。";return;}
+    names.forEach(function(name){var button=document.createElement("button");button.type="button";button.className="subcategory-tag";button.setAttribute("data-remove-subcategory",name);button.textContent=name;var remove=document.createElement("span");remove.textContent="×";button.appendChild(remove);container.appendChild(button);});
+  }
+  function renderDistribution(){
+    var items=entries.filter(function(item){return item.date.slice(0,7)===monthKey()&&item.kind==="expense";});
+    var total=items.reduce(function(sum,item){return sum+Number(item.amount||0);},0),container=document.getElementById("distributionList");
+    document.getElementById("reportTotal").textContent="支出總額："+formatMoney(total);
+    container.replaceChildren();
+    if(!items.length){container.textContent="這個月還沒有支出記錄。";return;}
+    var groups=Object.create(null);items.forEach(function(item){var category=item.category||"其他";if(!groups[category])groups[category]={total:0,subcategories:Object.create(null)};groups[category].total+=Number(item.amount||0);var sub=item.subcategory||"未設定子分類";groups[category].subcategories[sub]=(groups[category].subcategories[sub]||0)+Number(item.amount||0);});
+    Object.keys(groups).sort(function(a,b){return groups[b].total-groups[a].total;}).forEach(function(name){
+      var group=groups[name],article=document.createElement("div");article.className="distribution-item";
+      var head=document.createElement("div");head.className="distribution-head";var label=document.createElement("strong");label.textContent=name;var value=document.createElement("span");value.textContent=formatMoney(group.total)+"（"+(total?Math.round(group.total/total*100):0)+"%）";head.append(label,value);
+      var track=document.createElement("div");track.className="distribution-track";var bar=document.createElement("div");bar.className="distribution-bar";bar.style.width=(total?group.total/total*100:0)+"%";track.appendChild(bar);article.append(head,track);
+      Object.keys(group.subcategories).sort(function(a,b){return group.subcategories[b]-group.subcategories[a];}).forEach(function(sub){var line=document.createElement("div");line.className="distribution-sub";var subName=document.createElement("span");subName.textContent=sub;var subValue=document.createElement("span");subValue.textContent=formatMoney(group.subcategories[sub]);line.append(subName,subValue);article.appendChild(line);});
+      container.appendChild(article);
+    });
   }
   function render(){
     document.getElementById("monthLabel").textContent=selectedMonth.getFullYear()+" 年 "+(selectedMonth.getMonth()+1)+" 月";
@@ -141,22 +237,54 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     document.getElementById("incomeTotal").textContent=formatMoney(income);
     document.getElementById("expenseTotal").textContent=formatMoney(expense);
     document.getElementById("balanceTotal").textContent=formatMoney(income-expense);
+    renderDistribution();
     var rows=document.getElementById("rows");
     if(!visible.length){
-      rows.innerHTML='<tr><td colspan="6" class="empty">這個月還沒有記錄</td></tr>';
+      rows.innerHTML='<tr><td colspan="7" class="empty">這個月還沒有記錄</td></tr>';
       return;
     }
     rows.innerHTML=visible.slice().sort(function(a,b){return b.date.localeCompare(a.date)||b.id-a.id;}).map(function(item){
       return "<tr><td class='editable-cell' data-edit-field='date' data-id='"+item.id+"' title='點擊修改'>"+escapeHtml(item.date)+"</td><td class='editable-cell' data-edit-field='kind' data-id='"+item.id+"' title='點擊修改'>"+(item.kind==="income"?"收入":"支出")+"</td><td class='editable-cell' data-edit-field='category' data-id='"+item.id+"' title='點擊修改'>"+
-        escapeHtml(item.category)+"</td><td class='editable-cell' data-edit-field='note' data-id='"+item.id+"' title='點擊修改'>"+escapeHtml(item.note||"—")+"</td><td class='editable-cell amount "+
+        escapeHtml(item.category)+"</td><td class='editable-cell' data-edit-field='subcategory' data-id='"+item.id+"' title='點擊修改'>"+escapeHtml(item.subcategory||"—")+"</td><td class='editable-cell' data-edit-field='note' data-id='"+item.id+"' title='點擊修改'>"+escapeHtml(item.note||"—")+"</td><td class='editable-cell amount "+
         (item.kind==="income"?"income":"expense")+" editable-cell' data-edit-field='amount' data-id='"+item.id+"' title='點擊修改'>"+(item.kind==="income"?"+":"−")+formatMoney(item.amount)+
         "</td><td><button class='delete' type='button' data-action='delete' data-id='"+item.id+"'>刪除</button></td></tr>";
     }).join("");
   }
 
   document.getElementById("kind").addEventListener("change",updateCategories);
+  document.getElementById("category").addEventListener("change",updateEntrySubcategories);
   document.getElementById("prev").addEventListener("click",function(){selectedMonth.setMonth(selectedMonth.getMonth()-1);render();});
   document.getElementById("next").addEventListener("click",function(){selectedMonth.setMonth(selectedMonth.getMonth()+1);render();});
+  document.getElementById("ledgerTab").addEventListener("click",function(){document.getElementById("ledgerScreen").hidden=false;document.getElementById("reportScreen").hidden=true;this.classList.add("active");document.getElementById("reportTab").classList.remove("active");});
+  document.getElementById("reportTab").addEventListener("click",function(){document.getElementById("ledgerScreen").hidden=true;document.getElementById("reportScreen").hidden=false;this.classList.add("active");document.getElementById("ledgerTab").classList.remove("active");renderCategoryManager();renderDistribution();});
+  document.getElementById("manageKind").addEventListener("change",renderCategoryManager);
+  document.getElementById("manageCategory").addEventListener("change",renderCategoryManager);
+  document.getElementById("addCategoryButton").addEventListener("click",function(){
+    var kind=document.getElementById("manageKind").value,name=document.getElementById("newCategoryName").value.trim(),message=document.getElementById("settingsMessage");
+    if(!name){message.textContent="請先輸入分類名稱。";return;}
+    if(categoryMap[kind].indexOf(name)>=0){message.textContent="這個分類已經存在。";return;}
+    changeCategorySettings(function(){categoryMap[kind].push(name);});
+    if(categoryMap[kind].indexOf(name)>=0)document.getElementById("newCategoryName").value="";
+  });
+  document.getElementById("removeCategoryButton").addEventListener("click",function(){
+    var kind=document.getElementById("manageKind").value,name=document.getElementById("manageCategory").value,message=document.getElementById("settingsMessage");
+    if(categoryMap[kind].length<=1){message.textContent="至少保留一個分類。";return;}
+    changeCategorySettings(function(){categoryMap[kind]=categoryMap[kind].filter(function(item){return item!==name;});delete subcategoryMap[kind][name];});
+  });
+  document.getElementById("addSubcategoryButton").addEventListener("click",function(){
+    var kind=document.getElementById("manageKind").value,category=document.getElementById("manageCategory").value,name=document.getElementById("newSubcategoryName").value.trim(),message=document.getElementById("settingsMessage");
+    if(!category){message.textContent="請先選擇分類。";return;}
+    if(!name){message.textContent="請先輸入子分類名稱。";return;}
+    if(!subcategoryMap[kind][category])subcategoryMap[kind][category]=[];
+    if(subcategoryMap[kind][category].indexOf(name)>=0){message.textContent="這個子分類已經存在。";return;}
+    changeCategorySettings(function(){subcategoryMap[kind][category].push(name);});
+    if(subcategoryMap[kind][category].indexOf(name)>=0)document.getElementById("newSubcategoryName").value="";
+  });
+  document.getElementById("subcategoryTags").addEventListener("click",function(event){
+    var button=event.target.closest("button[data-remove-subcategory]");if(!button)return;
+    var kind=document.getElementById("manageKind").value,category=document.getElementById("manageCategory").value,name=button.getAttribute("data-remove-subcategory");
+    changeCategorySettings(function(){subcategoryMap[kind][category]=(subcategoryMap[kind][category]||[]).filter(function(item){return item!==name;});});
+  });
   document.getElementById("entryDate").value=localDate();
   document.getElementById("entryForm").addEventListener("submit",function(event){
     event.preventDefault();
@@ -169,6 +297,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       kind:document.getElementById("kind").value,
       amount:amount,
       category:document.getElementById("category").value,
+      subcategory:document.getElementById("subcategory").value,
       date:document.getElementById("entryDate").value,
       note:document.getElementById("note").value.trim()
     };
@@ -197,8 +326,11 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||Number.isNaN(Date.parse(value+"T00:00:00"))||new Date(value+"T00:00:00").toISOString().slice(0,10)!==value){message.textContent="請填寫有效日期。";render();return;}
     }else if(field==="kind"&&["income","expense"].indexOf(value)<0){render();return;}
     else if(field==="category"&&categoryMap[current.kind].indexOf(value)<0){message.textContent="請選擇有效分類。";render();return;}
+    else if(field==="subcategory"&&value&&((subcategoryMap[current.kind]&&subcategoryMap[current.kind][current.category])||[]).indexOf(value)<0){message.textContent="請選擇有效子分類。";render();return;}
     else if(field==="note")value=value.trim();
     updated[field]=value;
+    if(field==="category"&&((subcategoryMap[current.kind]&&subcategoryMap[current.kind][value])||[]).indexOf(updated.subcategory||"")<0)updated.subcategory="";
+    if(field==="kind"&&categoryMap[value].indexOf(current.category)<0){updated.category=categoryMap[value][0];updated.subcategory="";}
     var index=entries.indexOf(current);entries[index]=updated;
     try{saveEntries();}catch(error){entries[index]=current;message.textContent="儲存失敗，請檢查瀏覽器儲存空間。";render();return;}
     if(window.moneycountSyncSave)window.moneycountSyncSave(updated);
@@ -217,7 +349,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       editor.value=field==="note"?current.note||"":current[field];
     }else{
       editor=document.createElement("select");editor.className="cell-editor";
-      options=field==="kind"?[{value:"expense",label:"支出"},{value:"income",label:"收入"}]:categoryMap[current.kind].map(function(name){return {value:name,label:name};});
+      options=field==="kind"?[{value:"expense",label:"支出"},{value:"income",label:"收入"}]:field==="category"?categoryMap[current.kind].map(function(name){return {value:name,label:name};}):[{value:"",label:"無"}].concat(((subcategoryMap[current.kind]&&subcategoryMap[current.kind][current.category])||[]).map(function(name){return {value:name,label:name};}));
       options.forEach(function(option){var node=document.createElement("option");node.value=option.value;node.textContent=option.label;editor.appendChild(node);});
       editor.value=current[field];
     }
@@ -241,6 +373,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     render();
   });
   updateCategories();
+  renderCategoryManager();
   render();
 })();
 </script>
@@ -334,7 +467,8 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     }
     function validAiEntry(item){
       return item&&["income","expense"].indexOf(item.kind)>=0&&Number.isSafeInteger(Number(item.amount))&&Number(item.amount)>0&&
-        (item.kind==="income"?["薪水","獎金","禮金","其他"]:["飲食","交通","生活","購物","娛樂","其他"]).indexOf(item.category)>=0&&
+        window.moneycountGetCategorySettings().categories[item.kind].indexOf(item.category)>=0&&
+        (!item.subcategory||((window.moneycountGetCategorySettings().subcategories[item.kind][item.category]||[]).indexOf(item.subcategory)>=0))&&
         /^\d{4}-\d{2}-\d{2}$/.test(item.date)&&!Number.isNaN(Date.parse(item.date+"T00:00:00"))&&String(item.note||"").length<=120;
     }
     function showAiProposal(change){
@@ -343,10 +477,10 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       var detail=document.createElement("p");
       if(change.type==="delete"){
         var old=window.moneycountGetEntries().find(function(item){return Number(item.id)===Number(change.id);});
-        detail.textContent=old?old.date+" · "+(old.kind==="income"?"收入":"支出")+" · "+old.category+" · "+old.amount+" · "+(old.note||"無備註"):"找不到原記錄";
+        detail.textContent=old?old.date+" · "+(old.kind==="income"?"收入":"支出")+" · "+old.category+(old.subcategory?" / "+old.subcategory:"")+" · "+old.amount+" · "+(old.note||"無備註"):"找不到原記錄";
       }else{
         var item=change.entry;
-        detail.textContent=item.date+" · "+(item.kind==="income"?"收入":"支出")+" · "+item.category+" · "+item.amount+" · "+(item.note||"無備註");
+        detail.textContent=item.date+" · "+(item.kind==="income"?"收入":"支出")+" · "+item.category+(item.subcategory?" / "+item.subcategory:"")+" · "+item.amount+" · "+(item.note||"無備註");
       }
       aiProposal.appendChild(detail);
       var apply=document.createElement("button");apply.type="button";apply.textContent="確認套用";
@@ -370,7 +504,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
         var prompt=[
           "你是記帳日常的繁體中文財務記帳助理。只能根據 ledger 回答，不可捏造資料。使用者要求修改或刪除時，只提出單一明確操作；若目標不唯一或資訊不足，action.type 設為 none，並在 message 詢問澄清。不要直接宣稱已修改。",
           "請只回傳 JSON，不要 Markdown，格式：{\"message\":\"給使用者的繁體中文回覆\",\"action\":{\"type\":\"none|add|update|delete\",\"id\":null,\"entry\":null}}。",
-          "add/update 的 entry 必須含 kind(income/expense), amount(正整數), category, date(YYYY-MM-DD), note。update/delete 的 id 必須是 ledger 裡存在的 id。更新時請輸出完整的新 entry。分類只可選支出：飲食、交通、生活、購物、娛樂、其他；收入：薪水、獎金、禮金、其他。無法明確推斷日期、金額、種類、分類或目標時請 action.type=none 並詢問。",
+          "add/update 的 entry 必須含 kind(income/expense), amount(正整數), category, subcategory(可為空字串), date(YYYY-MM-DD), note。update/delete 的 id 必須是 ledger 裡存在的 id。更新時請輸出完整的新 entry。分類與子分類使用這份設定："+JSON.stringify(window.moneycountGetCategorySettings())+"。無法明確推斷日期、金額、種類、分類或目標時請 action.type=none 並詢問。",
           "今天日期="+(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})(),
           "ledger="+JSON.stringify(ledger),
           "最近對話="+JSON.stringify(aiHistory.slice(-8)),
@@ -379,10 +513,10 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
         var result=await generateWithFallback(prompt);
         var payload=JSON.parse(result.response.text());
         var message=String(payload.message||"我需要更多資訊才能協助你。");addAiMessage(message,"model");
-        if(payload.action&&payload.action.type==="add"&&validAiEntry(payload.action.entry))showAiProposal({type:"add",entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
+        if(payload.action&&payload.action.type==="add"&&validAiEntry(payload.action.entry))showAiProposal({type:"add",entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,subcategory:String(payload.action.entry.subcategory||""),date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
         else if(payload.action&&payload.action.type==="update"){
           var target=ledger.find(function(item){return Number(item.id)===Number(payload.action.id);});
-          if(target&&validAiEntry(payload.action.entry))showAiProposal({type:"update",id:Number(target.id),entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
+          if(target&&validAiEntry(payload.action.entry))showAiProposal({type:"update",id:Number(target.id),entry:{kind:payload.action.entry.kind,amount:Number(payload.action.entry.amount),category:payload.action.entry.category,subcategory:String(payload.action.entry.subcategory||""),date:payload.action.entry.date,note:String(payload.action.entry.note||"")}});
           else if(payload.action.type!=="none")addAiMessage("我無法安全確認這筆記錄或內容，沒有提出修改。","model");
         }else if(payload.action&&payload.action.type==="delete"){
           var found=ledger.find(function(item){return Number(item.id)===Number(payload.action.id);});
@@ -401,11 +535,13 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
     var db=firestoreSdk.getFirestore(app);
     var activeUid=null;
     var stopListening=null;
+    var stopSettingsListening=null;
     var syncRun=0;
     function stopCloudSync(){
       syncRun++;
       activeUid=null;
       if(stopListening){stopListening();stopListening=null;}
+      if(stopSettingsListening){stopSettingsListening();stopSettingsListening=null;}
     }
     async function startCloudSync(user){
       stopCloudSync();
@@ -413,9 +549,18 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
       activeUid=user.uid;
       status.textContent="正在連接記帳資料…";
       var entriesRef=firestoreSdk.collection(db,"users",user.uid,"entries");
+      var settingsRef=firestoreSdk.doc(db,"users",user.uid,"entries","__app_settings");
       try{
         var remote=await firestoreSdk.getDocs(entriesRef);
         if(thisRun!==syncRun)return;
+        var cloudSettings=await firestoreSdk.getDoc(settingsRef);
+        if(thisRun!==syncRun)return;
+        if(cloudSettings.exists()){
+          if(window.moneycountApplyCloudSettings)window.moneycountApplyCloudSettings(cloudSettings.data());
+        }else{
+          var initialSettings=window.moneycountGetCategorySettings();
+          await firestoreSdk.setDoc(settingsRef,{categories:initialSettings.categories,subcategories:initialSettings.subcategories});
+        }
         var owner=localStorage.getItem("moneycount_cloud_owner");
         var migrationKey="moneycount_migrated_"+user.uid;
         var mayImport=!localStorage.getItem(migrationKey)&&(!owner||owner===user.uid);
@@ -443,6 +588,12 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
         },function(error){
           status.textContent="同步失敗（"+(error.code||"未知錯誤")+"），本機記錄仍保留";
         });
+        stopSettingsListening=firestoreSdk.onSnapshot(settingsRef,function(snapshot){
+          if(thisRun!==syncRun||!snapshot.exists())return;
+          if(window.moneycountApplyCloudSettings)window.moneycountApplyCloudSettings(snapshot.data());
+        },function(error){
+          document.getElementById("settingsMessage").textContent="分類同步失敗（"+(error.code||"未知錯誤")+"），本機設定仍保留。";
+        });
       }catch(error){
         status.textContent="雲端連線失敗（"+(error.code||"未知錯誤")+"），請確認 Firestore 與 Rules 設定";
       }
@@ -453,6 +604,14 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 8px
         await firestoreSdk.setDoc(firestoreSdk.doc(db,"users",activeUid,"entries",String(entry.id)),entry);
       }catch(error){
         status.textContent="雲端儲存失敗（"+(error.code||"未知錯誤")+"），本機記錄仍保留";
+      }
+    };
+    window.moneycountSyncSettings=async function(settings){
+      if(!activeUid)return;
+      try{
+        await firestoreSdk.setDoc(firestoreSdk.doc(db,"users",activeUid,"entries","__app_settings"),{categories:settings.categories,subcategories:settings.subcategories});
+      }catch(error){
+        document.getElementById("settingsMessage").textContent="雲端儲存失敗（"+(error.code||"未知錯誤")+"），本機設定仍保留。";
       }
     };
     window.moneycountSyncDelete=async function(id){
